@@ -34,7 +34,7 @@ class GameObject(object):
     def move(self, dt):
         """Move as if dt seconds passed"""
         self.position += dt * self.speed
-        self.position = Point2(*self.position)
+        #self.position = Point2(*self.position)
 
     def step(self, dt):
         """Move and bounce of walls."""
@@ -56,7 +56,7 @@ class OrbiterGame(object):
         self.size  = self.settings["world_size"]
 
         self.craft = GameObject(Point2(*self.settings["craft_initial_position"]),
-                               Vector2(*self.settings["craft_initial_speed"]),
+                               np.array(self.settings["craft_initial_speed"]),
                                "craft",
                                self.settings)
         self.forward = Vector2([0, 0])
@@ -88,7 +88,13 @@ class OrbiterGame(object):
     def perform_action(self, action_id):
         """Change speed to one of craft vectors"""
         assert 0 <= action_id < self.num_actions
+
+        angle = self.directions[action_id][0]
+        rotation = np.matrix([  [np.cos(angle), -np.sin(angle)],
+                                [np.sin(angle), np.cos(angle)]])
+
         self.craft.speed *= 0.8
+        self.craft.speed *= rotation
         self.craft.speed += self.directions[action_id][1]
 
     def spawn_object(self, obj_type):
@@ -97,8 +103,7 @@ class OrbiterGame(object):
         position = np.random.uniform([radius, radius], np.array(self.size) - radius)
         position = Point2(float(position[0]), float(position[1]))
         max_speed = np.array(self.settings["maximum_speed"])
-        speed    = np.random.uniform(-max_speed, max_speed).astype(float)
-        speed = Vector2(float(speed[0]), float(speed[1]))
+        speed = np.random.uniform(-max_speed, max_speed, 2).astype(float)
 
         self.objects.append(GameObject(position, speed, obj_type, self.settings))
 
@@ -152,8 +157,8 @@ class OrbiterGame(object):
         observation_offset = 0
         for i, observation_line in enumerate(self.observation_lines):
             # shift to craft position
-            observation_line = LineSegment2(self.craft.position + Vector2(*observation_line.p1),
-                                            self.craft.position + Vector2(*observation_line.p2))
+            observation_line = LineSegment2(Vector2(*self.craft.position) + Vector2(*observation_line.p1),
+                                            Vector2(*self.craft.position) + Vector2(*observation_line.p2))
 
             observed_object = None
             # if end of observation line is outside of walls, we see the wall.
