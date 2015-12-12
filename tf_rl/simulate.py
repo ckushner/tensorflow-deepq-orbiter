@@ -105,14 +105,13 @@ def simulate(simulation,
         'simulation_time_since_last_action': 0,
     }
     def advance_simulation():
-        while sim_s['simulated_up_to'] < time.time():
-            simulation.step(simulation_resultion)
-            sim_s['simulated_up_to'] += simulation_resultion / speed
-            sim_s['simulation_time_since_last_action'] += simulation_resultion
-            if sim_s['simulation_time_since_last_action'] > simulation_time_between_actions:
-                if controller is not None:
-                    control()
-                    sim_s['simulation_time_since_last_action'] = 0
+        simulation.step(simulation_resultion)
+        sim_s['simulated_up_to'] += simulation_resultion / speed
+        sim_s['simulation_time_since_last_action'] += simulation_resultion
+        if sim_s['simulation_time_since_last_action'] > simulation_time_between_actions:
+            if controller is not None:
+                control()
+                sim_s['simulation_time_since_last_action'] = 0
 
     eq.schedule_recurring(advance_simulation, time_between_frames)
 

@@ -40,11 +40,11 @@ current_settings = {
         'asteroid': -0.1,
     },
 
-    'world_size': (1e7,1e7), # 10000km^2
+    'world_size': (1e8,1e8), # 10000km^2
     'image_size': 700,
 
     # DRAGON!
-    'craft_initial_position': [9e6,9e6],
+    'craft_initial_position': [5e7,6e7],
     'craft_initial_speed':    [0,   0],
     'craft_mass':             6000,
     'craft_radius':           2,
@@ -55,7 +55,7 @@ current_settings = {
     'craft_max_thrust':       400, # N
     'craft_step_thrust':      50,
 
-    'planet_initial_position': [5e6,5e6],
+    'planet_initial_position': [5e7,5e7],
     'planet_initial_speed':    [0,   0],
     'planet_mass':   5.9e24,
     'planet_radius': 6e6,
@@ -111,16 +111,17 @@ journalist.add_graph(session.graph_def)
 
 fast_mode = False
 if fast_mode:
-    FPS, SPEED, RES = 1, 4.5, 0.1
+    FPS, SPEED, RES = 30, 1, 0.1
 else:
-    FPS, SPEED, RES = 30, 1., 0.03
+    FPS, SPEED, RES = 30, 1., 60
 
 try:
     with tf.device("/cpu:0"): # can GPU?
         simulate(g, current_controller, fps = FPS,
                  simulation_resultion=RES,
                  actions_per_simulation_second=10,
-                 speed=SPEED)
+                 speed=SPEED,
+                 save_path='svgout/')
 except KeyboardInterrupt:
     print("Interrupted")
 

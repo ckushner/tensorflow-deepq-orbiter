@@ -55,6 +55,9 @@ class Scene:
 
 class Line:
     def __init__(self,start,end):
+        start = [int(x) for x in start]
+        end = [int(x) for x in end]
+
         self.start = start #xy tuple
         self.end = end     #xy tuple
 

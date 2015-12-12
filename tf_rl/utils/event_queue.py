@@ -46,8 +46,5 @@ class EventQueue(object):
         """Execute events in the queue as timely as possible."""
         while True:
             event = self.q.get()
-            now = time.time()
-            if now < event.ts:
-                time.sleep(event.ts - now)
             event.f()
             

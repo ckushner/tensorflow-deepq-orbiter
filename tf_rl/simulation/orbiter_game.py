@@ -40,8 +40,10 @@ class OrbiterGame(object):
         """Initiallize game simulator with settings"""
         self.settings = settings
         self.size  = self.settings["world_size"]
+	self.sim_time = 0.
 
         self.G = self.settings["G"]
+        self.gravity = np.array([0, 0])
 
         self.craft = GameObject(np.array(self.settings["craft_initial_position"], dtype=float),
                                np.array(self.settings["craft_initial_speed"], dtype=float),
@@ -105,7 +107,7 @@ class OrbiterGame(object):
         """Spawn object of a given type and add it to the objects array"""
         radius = self.settings["asteroid_radius"]
         position = np.random.uniform([radius, radius], np.array(self.size) - radius)
-        position = Point2(float(position[0]), float(position[1]))
+        position = np.array([float(position[0]), float(position[1])])
         max_speed = np.array(self.settings["maximum_speed"])
         speed = np.random.uniform(-max_speed, max_speed, 2).astype(float)
 
@@ -118,14 +120,21 @@ class OrbiterGame(object):
 
         Also resolve collisions with the craft"""
         for obj in self.objects + [self.craft] :
-            force = (self.G * self.planet.mass * obj.mass) \
-                / np.linalg.norm(self.planet.position - obj.position)**2
+            r = self.planet.position - obj.position
+            g = (self.G * self.planet.mass * obj.mass) \
+                / (np.linalg.norm(r) ** 2)
+
+            force = g * (r / np.linalg.norm(r))
+
+            if obj == self.craft:
+                self.gravity = force
 
             obj.speed += dt * force / obj.mass
 
             obj.step(dt)
 
         self.resolve_collisions()
+	self.sim_time += dt
 
     def squared_distance(self, p1, p2):
         return (p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2
@@ -267,8 +276,11 @@ class OrbiterGame(object):
         recent_reward = self.collected_rewards[-100:] + [0]
         objects_eaten_str = ', '.join(["%s: %s" % (o,c) for o,c in self.objects_eaten.items()])
         stats.extend([
+            "time         = %.1f s" % (self.sim_time),
+	    "altitude     = %.1f m" % (np.linalg.norm(self.craft.position - self.planet.position) - self.planet.radius),
+            "gravity      = %.1f N" % (np.linalg.norm(self.gravity)),
+            "speed        = %.1f m/s" % (np.linalg.norm(self.craft.speed)),
             "reward       = %.1f" % (sum(recent_reward)/len(recent_reward),),
-            "objects eaten => %s" % (objects_eaten_str,),
         ])
 
         scene = svg.Scene((self.size[0] * scale + 20,
@@ -279,8 +291,8 @@ class OrbiterGame(object):
 
 
         for line in self.observation_lines:
-            scene.add(svg.Line(line.p1 + self.craft.position*scale + Point2(10,10),
-                               line.p2 + self.craft.position*scale + Point2(10,10)))
+            scene.add(svg.Line(line.p1 + Point2(*(self.craft.position).tolist()) * scale + Point2(10,10),
+                               line.p2 + Point2(*(self.craft.position).tolist()) * scale + Point2(10,10)))
 
         for obj in self.objects + [self.craft] :
             scene.add(obj.draw(scale))
