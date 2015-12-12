@@ -145,7 +145,7 @@ class OrbiterGame(object):
 
     def observe(self):
         """Return observation vector. For all the observation directions it returns representation
-        of the closest object to the craft - might be nothing, another object or a wall.
+        of the closest object to the hero - might be nothing, another object or a wall.
         Representation of observation for all the directions will be concatenated.
         """
         num_obj_types = len(self.settings["objects"]) + 1 # and wall
@@ -154,16 +154,21 @@ class OrbiterGame(object):
         observable_distance = self.settings["observation_line_length"]
 
         relevant_asteroids = [obj for obj in self.objects
-                            if obj.position.distance(self.craft.position) < observable_distance]
+                            if obj.position.distance(self.hero.position) < observable_distance]
+        # objects sorted from closest to furthest
+        relevant_asteroids.sort(key=lambda x: x.position.distance(self.hero.position))
 
-        observation = np.zeros(self.observation_size)
+        observation        = np.zeros(self.observation_size)
         observation_offset = 0
         for i, observation_line in enumerate(self.observation_lines):
-            # shift to craft position
-            observation_line = LineSegment2(Vector2(*self.craft.position) + Vector2(*observation_line.p1),
-                                            Vector2(*self.craft.position) + Vector2(*observation_line.p2))
+            # shift to hero position
+            observation_line = LineSegment2(self.hero.position + Vector2(*observation_line.p1),
+                                            self.hero.position + Vector2(*observation_line.p2))
 
             observed_object = None
+            # if end of observation line is outside of walls, we see the wall.
+            if not self.inside_walls(observation_line.p2):
+                observed_object = "**wall**"
             for obj in relevant_asteroids:
                 if observation_line.distance(obj.position) < self.settings["object_radius"]:
                     observed_object = obj
@@ -171,13 +176,35 @@ class OrbiterGame(object):
             object_type_id = None
             speed_x, speed_y = 0, 0
             proximity = 0
-            if observed_object is not None: # asteroids seen
+            if observed_object == "**wall**": # wall seen
+                object_type_id = num_obj_types - 1
+                # a wall has fairly low speed...
+                speed_x, speed_y = 0, 0
+                # best candidate is intersection between
+                # observation_line and a wall, that's
+                # closest to the hero
+                best_candidate = None
+                for wall in self.walls:
+                    candidate = observation_line.intersect(wall)
+                    if candidate is not None:
+                        if (best_candidate is None or
+                                best_candidate.distance(self.hero.position) >
+                                candidate.distance(self.hero.position)):
+                            best_candidate = candidate
+                if best_candidate is None:
+                    # assume it is due to rounding errors
+                    # and wall is barely touching observation line
+                    proximity = observable_distance
+                else:
+                    proximity = best_candidate.distance(self.hero.position)
+            elif observed_object is not None: # agent seen
+                object_type_id = self.settings["objects"].index(observed_object.obj_type)
                 speed_x, speed_y = tuple(observed_object.speed)
                 intersection_segment = obj.as_circle().intersect(observation_line)
                 assert intersection_segment is not None
                 try:
-                    proximity = min(intersection_segment.p1.distance(self.craft.position),
-                                    intersection_segment.p2.distance(self.craft.position))
+                    proximity = min(intersection_segment.p1.distance(self.hero.position),
+                                    intersection_segment.p2.distance(self.hero.position))
                 except AttributeError:
                     proximity = observable_distance
             for object_type_idx_loop in range(num_obj_types):
@@ -189,8 +216,8 @@ class OrbiterGame(object):
             assert num_obj_types + 2 == self.eye_observation_size
             observation_offset += self.eye_observation_size
 
-        observation[observation_offset]     = self.craft.speed[0] / max_speed_x
-        observation[observation_offset + 1] = self.craft.speed[1] / max_speed_y
+        observation[observation_offset]     = self.hero.speed[0] / max_speed_x
+        observation[observation_offset + 1] = self.hero.speed[1] / max_speed_y
         assert observation_offset + 2 == self.observation_size
 
         return observation
