@@ -10,7 +10,7 @@ from euclid import Circle, Point2, Vector2, LineSegment2
 import tf_rl.utils.svg as svg
 
 class GameObject(object):
-    def __init__(self, position, speed, obj_type, settings):
+    def __init__(self, position, speed, thrust, obj_type, settings):
         """Esentially represents circles of different kinds, which have
         position and speed."""
         self.settings = settings
@@ -19,6 +19,7 @@ class GameObject(object):
         self.obj_type = obj_type
         self.position = position
         self.speed    = speed
+        self.thrust   = thrust
 
     def step(self, dt):
         """Move as if dt seconds passed"""
@@ -40,9 +41,9 @@ class OrbiterGame(object):
 
         self.craft = GameObject(Point2(*self.settings["craft_initial_position"]),
                                np.array(self.settings["craft_initial_speed"]),
+                               np.array(self.settings["craft_initial_thrust"]),
                                "craft",
                                self.settings)
-        self.forward = Vector2([0, 0])
 
 
 
@@ -77,13 +78,12 @@ class OrbiterGame(object):
         """Change speed to one of craft vectors"""
         assert 0 <= action_id < self.num_actions
 
-        angle = self.directions[action_id][0]
-        rotation = np.matrix([  [np.cos(angle), -np.sin(angle)],
-                                [np.sin(angle), np.cos(angle)]])
+        self.craft.thrust += self.directions[action_id][0]
 
-        self.craft.speed *= 0.8
-        self.craft.speed *= rotation
-        self.craft.speed += self.directions[action_id][1]
+        thrust_vec = np.array([np.cos(self.craft.thrust),
+                                np.sin(self.craft.thrust)])
+
+        self.craft.speed += self.directions[action_id][1] * thrust_vec
 
     def spawn_object(self, obj_type):
         """Spawn object of a given type and add it to the objects array"""
