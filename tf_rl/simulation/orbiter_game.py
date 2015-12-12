@@ -64,8 +64,8 @@ class OrbiterGame(object):
                                "planet",
                                self.settings)
 
-        self.orbit = Orbit(center=planet.position, 
-                            radius=planet.radius+self.settings["orbit_altitude"])
+        self.orbit = Orbit(center=self.planet.position, 
+                            radius=self.planet.radius+self.settings["orbit_altitude"])
 
         # objects == asteroids
         self.asteroid_mass = self.settings["asteroid_mass"]
@@ -163,8 +163,8 @@ class OrbiterGame(object):
         Representation of observation for all the directions will be concatenated.
         """
         
-        self.orbit = Orbit(center=planet.position, 
-                            radius=planet.radius+self.settings["orbit_altitude"])
+        self.orbit = Orbit(center=self.planet.position, 
+                            radius=self.planet.radius+self.settings["orbit_altitude"])
 
         pos = Point2(*(self.craft.position).tolist())
 
