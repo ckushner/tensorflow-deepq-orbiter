@@ -47,25 +47,8 @@ class OrbiterGame(object):
         self.G = self.settings["G"]
         self.gravity = np.array([0, 0])
 
-        self.craft = GameObject(np.array(self.settings["craft_initial_position"], dtype=float),
-                               np.array(self.settings["craft_initial_speed"], dtype=float),
-                               np.array(self.settings["craft_radius"], dtype=float),
-                               np.array(self.settings["craft_mass"], dtype=float),
-                               np.array(self.settings["craft_thrust_angle"], dtype=float),
-                               "craft",
-                               self.settings)
-
-
-        self.planet = GameObject(np.array(self.settings["planet_initial_position"], dtype=float),
-                               np.array(self.settings["planet_initial_speed"], dtype=float),
-                               np.array(self.settings["planet_radius"], dtype=float), 
-                               np.array(self.settings["planet_mass"], dtype=float),
-                               0,
-                               "planet",
-                               self.settings)
-
-        self.orbit = Orbit(center=self.planet.position, 
-                            radius=self.planet.radius+self.settings["orbit_altitude"])
+        self.reset = False
+        self.init_craft_planet()
 
         # objects == asteroids
         self.asteroid_mass = self.settings["asteroid_mass"]
@@ -95,6 +78,28 @@ class OrbiterGame(object):
         self.num_actions = len(self.directions)
 
         self.objects_eaten = defaultdict(lambda: 0)
+
+    def init_craft_planet(self):
+        self.craft = GameObject(np.array(self.settings["craft_initial_position"], dtype=float),
+            np.array(self.settings["craft_initial_speed"], dtype=float),
+            np.array(self.settings["craft_radius"], dtype=float),
+            np.array(self.settings["craft_mass"], dtype=float),
+            np.array(self.settings["craft_thrust_angle"], dtype=float),
+            "craft",
+            self.settings)
+
+
+        self.planet = GameObject(np.array(self.settings["planet_initial_position"], dtype=float),
+            np.array(self.settings["planet_initial_speed"], dtype=float),
+            np.array(self.settings["planet_radius"], dtype=float), 
+            np.array(self.settings["planet_mass"], dtype=float),
+            0,
+            "planet",
+            self.settings)
+
+        self.orbit = Orbit(center=self.planet.position, 
+            radius=self.planet.radius+self.settings["orbit_altitude"])
+
 
     def perform_action(self, action_id):
         """Change speed to one of craft vectors"""
@@ -139,23 +144,41 @@ class OrbiterGame(object):
             obj.step(dt)
 
         self.resolve_collisions()
-	self.sim_time += dt
+
+        if self.reset:
+            self.object_reward -= 10
+            self.reset = False
+        else:
+            self.object_reward += self.orbit.reward(self.craft.position)
+
+        if self.craft.position[0] > self.size[0] or self.craft.position[1] > self.size[1] or \
+            self.craft.position[0] < 0 or self.craft.position[1] < 0:
+
+            init_craft_planet()
+            self.reset = True
+
+	   self.sim_time += dt
 
     def squared_distance(self, p1, p2):
         return (p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2
 
     def resolve_collisions(self):
-        """If craft touches, craft eats. Also reward gets updated."""
+        """If craft touches, reward gets updated."""
         to_remove = []
-        for obj in self.objects:
+        for obj in self.objects + [self.planet] :
             collision_distance2 = (2 * (self.craft.radius + obj.radius)) ** 2
             if self.squared_distance(self.craft.position, obj.position) < collision_distance2:
                 to_remove.append(obj)
+
         for obj in to_remove:
             self.objects.remove(obj)
             self.objects_eaten[obj.obj_type] += 1
             self.object_reward += self.settings["object_reward"][obj.obj_type]
             self.spawn_object(obj.obj_type)
+            if obj.obj_type == "planet":
+                init_craft_planet()
+                self.reset = True
+                
 
     def observe(self):
         """Return observation vector. For all the observation directions it returns representation

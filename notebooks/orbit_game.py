@@ -37,7 +37,8 @@ current_settings = {
     },
 
     'object_reward': {
-        'asteroid': -0.1,
+        'planet': -10,
+        'asteroid': -10,
     },
 
     'world_size': (1e8,1e8), # 10000km^2
