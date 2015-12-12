@@ -256,9 +256,8 @@ class OrbiterGame(object):
         """Generate observation segments in settings["num_observation_lines"] directions"""
         result = []
         start = Point2(0.0, 0.0)
-        end   = Point2(self.settings["observation_line_length"],
-                       self.settings["observation_line_length"])
-        thrustAngle = np.arctan2(self.craft.thrust[0], self.craft.trust[1])
+        end   = Point2(self.settings["observation_line_length"], 0.0)
+        thrustAngle = self.craft.thrust
         for angle in np.linspace(thrustAngle-np.pi/2, thrustAngle+np.pi/2, self.settings["num_observation_lines"], endpoint=False):
             rotation = Point2(math.cos(angle), math.sin(angle))
             current_start = Point2(start[0] * rotation[0], start[1] * rotation[1])
@@ -282,6 +281,7 @@ class OrbiterGame(object):
 	    "altitude     = %.1f m" % (np.linalg.norm(self.craft.position - self.planet.position) - self.planet.radius),
             "gravity      = %.1f N" % (np.linalg.norm(self.gravity)),
             "speed        = %.1f m/s" % (np.linalg.norm(self.craft.speed)),
+            "heading      = %f degrees" % (self.craft.thrust),
             "reward       = %.1f" % (sum(recent_reward)/len(recent_reward),),
         ])
 
