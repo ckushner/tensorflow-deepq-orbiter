@@ -49,6 +49,7 @@ class OrbiterGame(object):
 
         self.reset = False
         self.init_craft_planet()
+        self.fuel_cost = -1 / self.settings["craft_max_thrust"]
 
         # objects == asteroids
         self.asteroid_mass = self.settings["asteroid_mass"]
@@ -111,6 +112,8 @@ class OrbiterGame(object):
                                 np.sin(self.craft.heading)])
 
         self.craft.speed += self.directions[action_id][1] * thrust_vec
+
+        self.total_reward += self.directions[action_id][1] * self.settings["fuel_cost"]
 
     def spawn_object(self, obj_type):
         # TODO: avoid placement too close to craft / inside planet
