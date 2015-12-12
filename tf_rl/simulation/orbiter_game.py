@@ -66,9 +66,9 @@ class OrbiterGame(object):
 
         # every observation_line sees one of objects or wall and
         # two numbers representing speed of the object (if applicable)
-        self.eye_observation_size = len(self.settings["objects"]) + 2 # 2 not 3 because we have no walls
+        self.eye_observation_size = 1 #len(self.settings["objects"]) + 2 # 2 not 3 because we have no walls
         # additionally there are two numbers representing agents own speed.
-        self.observation_size = self.eye_observation_size * len(self.observation_lines) + 2
+        self.observation_size = self.eye_observation_size * len(self.observation_lines) + 4
 
         rotations = self.settings["craft_rotations"]
         thrusts = range(self.settings["craft_min_thrust"],
@@ -193,11 +193,8 @@ class OrbiterGame(object):
         
         self.orbit = Orbit(center=self.planet.position, 
                             radius=self.planet.radius+self.settings["orbit_altitude"])
-
         pos = Point2(*(self.craft.position).tolist())
-
         self.observation_lines = self.generate_observation_lines()
-
         num_obj_types = len(self.settings["objects"]) # no plus one, we don't have walls
         max_speed_x, max_speed_y = self.settings["maximum_speed"]
 
@@ -214,8 +211,10 @@ class OrbiterGame(object):
         observation_offset = 0
         for i, observation_line in enumerate(self.observation_lines):
             # shift to craft position
-            observation_line = LineSegment2(pos + Vector2(*observation_line.p1),
-                                            pos + Vector2(*observation_line.p2))
+
+			start = pos + Vector2(*observation_line.p1)
+			end = pos + Vector2(*observation_line.p2)
+            observation_line = LineSegment2(start, end)
 
             observed_object = None
             for obj in relevant_asteroids:
@@ -225,28 +224,7 @@ class OrbiterGame(object):
             object_type_id = None
             speed_x, speed_y = 0, 0
             proximity = 0
-            if observed_object == "**wall**": # wall seen
-                object_type_id = num_obj_types - 1
-                # a wall has fairly low speed...
-                speed_x, speed_y = 0, 0
-                # best candidate is intersection between
-                # observation_line and a wall, that's
-                # closest to the craft
-                best_candidate = None
-                for wall in self.walls:
-                    candidate = observation_line.intersect(wall)
-                    if candidate is not None:
-                        if (best_candidate is None or
-                                best_candidate.distance(pos) >
-                                candidate.distance(pos)):
-                            best_candidate = candidate
-                if best_candidate is None:
-                    # assume it is due to rounding errors
-                    # and wall is barely touching observation line
-                    proximity = observable_distance
-                else:
-                    proximity = best_candidate.distance(pos)
-            elif observed_object is not None: # agent seen
+            if observed_object is not None: # agent seen
                 object_type_id = self.settings["objects"].index(observed_object.obj_type)
                 speed_x, speed_y = tuple(observed_object.speed)
                 intersection_segment = obj.as_circle().intersect(observation_line)
@@ -256,18 +234,29 @@ class OrbiterGame(object):
                                     intersection_segment.p2.distance(pos))
                 except AttributeError:
                     proximity = observable_distance
-            for object_type_idx_loop in range(num_obj_types):
-                observation[observation_offset + object_type_idx_loop] = 1.0
-            if object_type_id is not None:
-                observation[observation_offset + object_type_id] = proximity / observable_distance
-            observation[observation_offset + num_obj_types] =     speed_x   / max_speed_x
-            observation[observation_offset + num_obj_types + 1] = speed_y   / max_speed_y
-            assert num_obj_types + 2 == self.eye_observation_size
+			else:
+				accuracy = 10.
+				rewards = np.array([])
+				for i in range(1, accuracy+1):
+					coordinates = np.empty(2, dtype=float) 
+					coordinates[0] = i*(end.x - start.x)/accuracy + start.x
+					coordinates[1] = i*(end.y - start.y)/accuracy + start.y
+					rewards.append(self.orbit.reward(coordinates))
+			observation[observation_offset] = np.around(np.average(rewards), decimals=1)
+#            for object_type_idx_loop in range(num_obj_types):
+#                observation[observation_offset + object_type_idx_loop] = 1.0
+#            if object_type_id is not None:
+#                observation[observation_offset + object_type_id] = proximity / observable_distance
+#            observation[observation_offset + num_obj_types] =     speed_x   / max_speed_x
+#            observation[observation_offset + num_obj_types + 1] = speed_y   / max_speed_y
+            #assert num_obj_types + 2 == self.eye_observation_size
             observation_offset += self.eye_observation_size
 
         observation[observation_offset]     = self.craft.speed[0] / max_speed_x
         observation[observation_offset + 1] = self.craft.speed[1] / max_speed_y
-        assert observation_offset + 2 == self.observation_size
+		observation[observation_offset + 2] = self.gravity[0]
+		ovservatoin[observation_offset + 3] = sefl.gravity[1]
+        assert observation_offset + 4 == self.observation_size
 
         return observation
 
