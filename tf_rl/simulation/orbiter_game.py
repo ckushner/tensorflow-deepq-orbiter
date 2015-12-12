@@ -11,7 +11,7 @@ from euclid import Circle, Point2, Vector2, LineSegment2
 import tf_rl.utils.svg as svg
 
 class GameObject(object):
-    def __init__(self, position, speed, radius, mass, thrust, obj_type, settings):
+    def __init__(self, position, speed, radius, mass, heading, obj_type, settings):
         """Esentially represents circles of different kinds, which have
         position and speed."""
         self.settings = settings
@@ -21,7 +21,7 @@ class GameObject(object):
         self.obj_type = obj_type
         self.position = position
         self.speed    = speed
-        self.thrust   = thrust
+        self.heading  = heading
 
     def step(self, dt):
         """Move as if dt seconds passed"""
@@ -95,10 +95,10 @@ class OrbiterGame(object):
         """Change speed to one of craft vectors"""
         assert 0 <= action_id < self.num_actions
 
-        self.craft.thrust += self.directions[action_id][0]
+        self.craft.heading += self.directions[action_id][0]
 
-        thrust_vec = np.array([np.cos(self.craft.thrust),
-                                np.sin(self.craft.thrust)])
+        thrust_vec = np.array([np.cos(self.craft.heading),
+                                np.sin(self.craft.heading)])
 
         self.craft.speed += self.directions[action_id][1] * thrust_vec
 
@@ -158,6 +158,8 @@ class OrbiterGame(object):
         Representation of observation for all the directions will be concatenated.
         """
         pos = Point2(*(self.craft.position).tolist())
+
+        self.observation_lines = self.generate_observation_lines()
 
         num_obj_types = len(self.settings["objects"]) # no plus one, we don't have walls
         max_speed_x, max_speed_y = self.settings["maximum_speed"]
@@ -258,9 +260,9 @@ class OrbiterGame(object):
         start = Point2(0.0, 0.0)
         end   = Point2(self.settings["observation_line_length"],
                         self.settings["observation_line_length"])
-        thrustAngle = self.craft.thrust
-        for angle in np.linspace(thrustAngle - 3*np.pi/4, thrustAngle + np.pi/4, self.settings["num_observation_lines"], endpoint=False):
-            rotation = Point2(math.cos(angle), math.sin(angle))
+        thrustAngle = np.radians(self.craft.heading)
+        for angle in np.linspace(thrustAngle - np.pi/2, thrustAngle + np.pi/2, self.settings["num_observation_lines"], endpoint=True):
+            rotation = Point2(math.cos(angle), -math.sin(angle))
             current_start = Point2(start[0] * rotation[0], start[1] * rotation[1])
             current_end   = Point2(end[0]   * rotation[0], end[1]   * rotation[1])
             result.append( LineSegment2(current_start, current_end))
@@ -282,7 +284,7 @@ class OrbiterGame(object):
 	    "altitude     = %.1f m" % (np.linalg.norm(self.craft.position - self.planet.position) - self.planet.radius),
             "gravity      = %.1f N" % (np.linalg.norm(self.gravity)),
             "speed        = %.1f m/s" % (np.linalg.norm(self.craft.speed)),
-            "heading      = %f degrees" % (self.craft.thrust),
+            "heading      = %f degrees" % (self.craft.heading),
             "reward       = %.1f" % (sum(recent_reward)/len(recent_reward),),
         ])
 
