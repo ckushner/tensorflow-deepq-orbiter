@@ -77,7 +77,7 @@ class OrbiterGame(object):
 
         # every observation_line sees one of objects or wall and
         # two numbers representing speed of the object (if applicable)
-        self.eye_observation_size = len(self.settings["objects"]) + 3
+        self.eye_observation_size = len(self.settings["objects"]) + 2 # 2 not 3 because we have no walls
         # additionally there are two numbers representing agents own speed.
         self.observation_size = self.eye_observation_size * len(self.observation_lines) + 2
 
@@ -159,13 +159,15 @@ class OrbiterGame(object):
         """
         pos = Point2(*(self.craft.position).tolist())
 
-        num_obj_types = len(self.settings["objects"]) + 1 # and wall
+        num_obj_types = len(self.settings["objects"]) # no plus one, we don't have walls
         max_speed_x, max_speed_y = self.settings["maximum_speed"]
 
         observable_distance = self.settings["observation_line_length"]
 
+        # Filters out asteroids outside of observations lines
         relevant_asteroids = [obj for obj in self.objects
                             if obj.position.distance(pos) < observable_distance]
+
         # objects sorted from closest to furthest
         relevant_asteroids.sort(key=lambda x: x.position.distance(pos))
 
@@ -177,7 +179,6 @@ class OrbiterGame(object):
                                             pos + Vector2(*observation_line.p2))
 
             observed_object = None
-            # if end of observation line is outside of walls, we see the wall.
             for obj in relevant_asteroids:
                 if observation_line.distance(obj.position) < obj.radius:
                     observed_object = obj
@@ -191,7 +192,7 @@ class OrbiterGame(object):
                 speed_x, speed_y = 0, 0
                 # best candidate is intersection between
                 # observation_line and a wall, that's
-                # closest to the hero
+                # closest to the craft
                 best_candidate = None
                 for wall in self.walls:
                     candidate = observation_line.intersect(wall)
@@ -257,7 +258,8 @@ class OrbiterGame(object):
         start = Point2(0.0, 0.0)
         end   = Point2(self.settings["observation_line_length"],
                        self.settings["observation_line_length"])
-        for angle in np.linspace(0, 2*np.pi, self.settings["num_observation_lines"], endpoint=False):
+        thrustAngle = np.arctan2(self.craft.thrust[0], self.craft.trust[1])
+        for angle in np.linspace(thrustAngle-np.pi/2, thrustAngle+np.pi/2, self.settings["num_observation_lines"], endpoint=False):
             rotation = Point2(math.cos(angle), math.sin(angle))
             current_start = Point2(start[0] * rotation[0], start[1] * rotation[1])
             current_end   = Point2(end[0]   * rotation[0], end[1]   * rotation[1])
