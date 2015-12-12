@@ -19,27 +19,10 @@ class GameObject(object):
         self.obj_type = obj_type
         self.position = position
         self.speed    = speed
-        self.bounciness = 1.0
-
-    def wall_collisions(self):
-        """Update speed upon collision with the wall."""
-        world_size = self.settings["world_size"]
-
-        for dim in range(2):
-            if self.position[dim] - self.radius       <= 0               and self.speed[dim] < 0:
-                self.speed[dim] = - self.speed[dim] * self.bounciness
-            elif self.position[dim] + self.radius + 1 >= world_size[dim] and self.speed[dim] > 0:
-                self.speed[dim] = - self.speed[dim] * self.bounciness
-
-    def move(self, dt):
-        """Move as if dt seconds passed"""
-        self.position += dt * self.speed
-        #self.position = Point2(*self.position)
 
     def step(self, dt):
-        """Move and bounce of walls."""
-        self.wall_collisions()
-        self.move(dt)
+        """Move as if dt seconds passed"""
+        self.position += dt * self.speed
 
     def as_circle(self):
         return Circle(self.position, float(self.radius))
@@ -61,6 +44,9 @@ class OrbiterGame(object):
                                self.settings)
         self.forward = Vector2([0, 0])
 
+
+
+        # objects = planets + asteroids
         self.objects = []
         for obj_type, number in settings["num_objects"].items():
             for _ in range(number):
@@ -77,8 +63,10 @@ class OrbiterGame(object):
         # additionally there are two numbers representing agents own speed.
         self.observation_size = self.eye_observation_size * len(self.observation_lines) + 2
 
-        rotations = [-20, 0, 20]
-        thrusts = range(0, 10)
+        rotations = self.settings["craft_rotations"]
+        thrusts = range(self.settings["craft_min_thrust"]
+                        self.settings["craft_max_thrust"],
+                        self.settings["craft_step_thrust"])
 
         self.directions = list(itertools.product(rotations, thrusts))
         self.num_actions = len(self.directions)
@@ -131,12 +119,6 @@ class OrbiterGame(object):
             self.objects_eaten[obj.obj_type] += 1
             self.object_reward += self.settings["object_reward"][obj.obj_type]
             self.spawn_object(obj.obj_type)
-
-    def inside_walls(self, point):
-        """Check if the point is inside the walls"""
-        EPS = 1e-4
-        return (EPS <= point[0] < self.size[0] - EPS and
-                EPS <= point[1] < self.size[1] - EPS)
 
     def observe(self):
         """Return observation vector. For all the observation directions it returns representation
@@ -217,18 +199,8 @@ class OrbiterGame(object):
 
         return observation
 
-    def distance_to_walls(self):
-        """Returns distance of a craft to walls"""
-        res = float('inf')
-        for wall in self.walls:
-            res = min(res, self.craft.position.distance(wall))
-        return res - self.settings["object_radius"]
-
     def collect_reward(self):
         """Return accumulated object eating score + current distance to walls score"""
-        wall_reward =  self.settings["wall_distance_penalty"] * \
-                       np.exp(-self.distance_to_walls() / self.settings["tolerable_distance_to_wall"])
-        assert wall_reward < 1e-3, "You are rewarding craft for being close to the wall!"
         total_reward = wall_reward + self.object_reward
         self.object_reward = 0
         self.collected_rewards.append(total_reward)
