@@ -60,6 +60,8 @@ current_settings = {
     'planet_mass':   5.9e24,
     'planet_radius': 6e6,
 
+    'orbit_altitude': 400,
+
     # need/update?
     "maximum_speed": [1.5e4, 1.5e4],
     "asteroid_radius": 500.0,
