@@ -1,7 +1,9 @@
-# coding: utf-8
-get_ipython().magic(u'load_ext autoreload')
-get_ipython().magic(u'autoreload 2')
-get_ipython().magic(u'matplotlib inline')
+from __future__ import print_function
+
+# # coding: utf-8
+# get_ipython().magic(u'load_ext autoreload')
+# get_ipython().magic(u'autoreload 2')
+# get_ipython().magic(u'matplotlib inline')
 
 # porque?
 # tf.
@@ -15,14 +17,14 @@ from tf_rl.simulation import OrbiterGame
 from tf_rl import simulate
 from tf_rl.models import MLP
 
-from __future__ import print_function
-
 
 LOG_DIR = tempfile.mkdtemp()
 print(LOG_DIR)
 
 
 current_settings = {
+    'G': 6.67e-11,
+
     'objects': [
         'planet',
         'asteroid',
@@ -38,21 +40,30 @@ current_settings = {
         'asteroid': -0.1,
     },
 
-    'world_size': (700,700),
+    'world_size': (1e7,1e7), # 10000km^2
+    'image_size': 700,
 
-    'craft_initial_position': [500, 500],
+    # DRAGON!
+    'craft_initial_position': [9e6,9e6],
     'craft_initial_speed':    [0,   0],
-    'craft_rotations':        [-20, 0, 20],
-    'craft_min_thrust':       0,    
-    'craft_max_thrust':       10,
-    'craft_step_thrust':      1,
+    'craft_mass':             6000,
+    'craft_radius':           2,
 
-    'planet_initial_position': [350, 350],
+    'craft_rotations':        [-1, 0, 1],
+    'craft_thrust_angle':     180,
+    'craft_min_thrust':       0,    
+    'craft_max_thrust':       400, # N
+    'craft_step_thrust':      50,
+
+    'planet_initial_position': [5e6,5e6],
     'planet_initial_speed':    [0,   0],
+    'planet_mass':   5.9e24,
+    'planet_radius': 6e6,
 
     # need/update?
-    "maximum_speed": [50, 50],
-    "object_radius": 10.0,
+    "maximum_speed": [1.5e4, 1.5e4],
+    "asteroid_radius": 500.0,
+    "asteroid_mass":   1e12,
 
     "num_objects": {
         "asteroid" : 0,

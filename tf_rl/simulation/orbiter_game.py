@@ -10,11 +10,12 @@ from euclid import Circle, Point2, Vector2, LineSegment2
 import tf_rl.utils.svg as svg
 
 class GameObject(object):
-    def __init__(self, position, speed, thrust, obj_type, settings):
+    def __init__(self, position, speed, radius, mass, thrust, obj_type, settings):
         """Esentially represents circles of different kinds, which have
         position and speed."""
         self.settings = settings
-        self.radius = self.settings["object_radius"]
+        self.radius = radius
+        self.mass = mass
 
         self.obj_type = obj_type
         self.position = position
@@ -28,10 +29,10 @@ class GameObject(object):
     def as_circle(self):
         return Circle(self.position, float(self.radius))
 
-    def draw(self):
+    def draw(self, scale):
         """Return svg object for this item."""
         color = self.settings["colors"][self.obj_type]
-        return svg.Circle(self.position + Point2(10, 10), self.radius, color=color)
+        return svg.Circle(self.position*scale + Point2(10, 10), self.radius*scale, color=color)
 
 class OrbiterGame(object):
     def __init__(self, settings):
@@ -39,15 +40,28 @@ class OrbiterGame(object):
         self.settings = settings
         self.size  = self.settings["world_size"]
 
+        self.G = self.settings["G"]
+
         self.craft = GameObject(Point2(*self.settings["craft_initial_position"]),
                                np.array(self.settings["craft_initial_speed"]),
-                               np.array(self.settings["craft_initial_thrust"]),
+                               np.array(self.settings["craft_radius"]), 
+                               np.array(self.settings["craft_mass"]),
+                               np.array(self.settings["craft_thrust_angle"]),
                                "craft",
                                self.settings)
 
 
+        self.planet = GameObject(Point2(*self.settings["planet_initial_position"]),
+                               np.array(self.settings["planet_initial_speed"]),
+                               np.array(self.settings["planet_radius"]), 
+                               np.array(self.settings["planet_mass"]),
+                               0,
+                               "planet",
+                               self.settings)
 
-        # objects = planets + asteroids
+        # objects == asteroids
+        self.asteroid_mass = self.settings["asteroid_mass"]
+        self.asteroid_radius = self.settings["asteroid_radius"]
         self.objects = []
         for obj_type, number in settings["num_objects"].items():
             for _ in range(number):
@@ -86,6 +100,7 @@ class OrbiterGame(object):
         self.craft.speed += self.directions[action_id][1] * thrust_vec
 
     def spawn_object(self, obj_type):
+        # TODO: avoid placement too close to craft / inside planet
         """Spawn object of a given type and add it to the objects array"""
         radius = self.settings["object_radius"]
         position = np.random.uniform([radius, radius], np.array(self.size) - radius)
@@ -93,14 +108,22 @@ class OrbiterGame(object):
         max_speed = np.array(self.settings["maximum_speed"])
         speed = np.random.uniform(-max_speed, max_speed, 2).astype(float)
 
-        self.objects.append(GameObject(position, speed, obj_type, self.settings))
+        self.objects.append(GameObject(position, speed, 
+                            self.asteroid_radius, self.asteroid_mass
+                            obj_type, self.settings))
 
     def step(self, dt):
         """Simulate all the objects for a given ammount of time.
 
         Also resolve collisions with the craft"""
         for obj in self.objects + [self.craft] :
+            force = (self.G * self.planet.mass * obj.mass) / 
+                (self.planet.position - obj.position)**2
+
+            obj.speed += (force/obj.mass) * dt
+
             obj.step(dt)
+
         self.resolve_collisions()
 
     def squared_distance(self, p1, p2):
@@ -238,6 +261,8 @@ class OrbiterGame(object):
     def to_html(self, stats=[]):
         """Return svg representation of the simulator"""
 
+        scale = self.settings["world_size"][0] / self.settings["image_size"]
+
         stats = stats[:]
         recent_reward = self.collected_rewards[-100:] + [0]
         objects_eaten_str = ', '.join(["%s: %s" % (o,c) for o,c in self.objects_eaten.items()])
@@ -247,21 +272,20 @@ class OrbiterGame(object):
             "objects eaten => %s" % (objects_eaten_str,),
         ])
 
-        scene = svg.Scene((self.size[0] + 20, self.size[1] + 20 + 20 * len(stats)))
-        scene.add(svg.Rectangle((10, 10), self.size))
+        scene = svg.Scene((self.size[0]*scale + 20, self.size[1]*scale + 20 + 20 * len(stats)))
+        scene.add(svg.Rectangle((10, 10), self.size*scale))
 
 
         for line in self.observation_lines:
-            scene.add(svg.Line(line.p1 + self.craft.position + Point2(10,10),
-                               line.p2 + self.craft.position + Point2(10,10)))
+            scene.add(svg.Line(line.p1 + self.craft.position*scale + Point2(10,10),
+                               line.p2 + self.craft.position*scale + Point2(10,10)))
 
         for obj in self.objects + [self.craft] :
-            scene.add(obj.draw())
+            scene.add(obj.draw(scale))
 
-        offset = self.size[1] + 15
+        offset = self.size[1]*scale + 15
         for txt in stats:
             scene.add(svg.Text((10, offset + 20), txt, 15))
             offset += 20
 
         return scene
-
