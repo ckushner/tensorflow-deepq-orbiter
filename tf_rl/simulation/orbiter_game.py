@@ -8,6 +8,8 @@ import time
 from collections import defaultdict
 from euclid import Circle, Point2, Vector2, LineSegment2
 
+from orbiter_rewards import Orbit
+
 import tf_rl.utils.svg as svg
 
 class GameObject(object):
@@ -40,7 +42,7 @@ class OrbiterGame(object):
         """Initiallize game simulator with settings"""
         self.settings = settings
         self.size  = self.settings["world_size"]
-	self.sim_time = 0.
+        self.sim_time = 0.
 
         self.G = self.settings["G"]
         self.gravity = np.array([0, 0])
@@ -61,6 +63,9 @@ class OrbiterGame(object):
                                0,
                                "planet",
                                self.settings)
+
+        self.orbit = Orbit(center=planet.position, 
+                            radius=planet.radius+self.settings["orbit_altitude"])
 
         # objects == asteroids
         self.asteroid_mass = self.settings["asteroid_mass"]
@@ -157,6 +162,10 @@ class OrbiterGame(object):
         of the closest object to the hero - might be nothing, another object or a wall.
         Representation of observation for all the directions will be concatenated.
         """
+        
+        self.orbit = Orbit(center=planet.position, 
+                            radius=planet.radius+self.settings["orbit_altitude"])
+
         pos = Point2(*(self.craft.position).tolist())
 
         num_obj_types = len(self.settings["objects"]) # no plus one, we don't have walls
