@@ -86,7 +86,7 @@ class OrbiterGame(object):
             np.array(self.settings["craft_radius"], dtype=float),
             np.array(self.settings["craft_mass"], dtype=float),
             np.array(self.settings["craft_thrust_angle"], dtype=float),
-            "craft",
+            "craft", 
             self.settings)
 
 
@@ -113,7 +113,7 @@ class OrbiterGame(object):
 
         self.craft.speed += self.directions[action_id][1] * thrust_vec
 
-        self.total_reward += self.directions[action_id][1] * self.settings["fuel_cost"]
+        self.object_reward += self.directions[action_id][1] * self.fuel_cost
 
     def spawn_object(self, obj_type):
         # TODO: avoid placement too close to craft / inside planet
@@ -157,10 +157,10 @@ class OrbiterGame(object):
         if self.craft.position[0] > self.size[0] or self.craft.position[1] > self.size[1] or \
             self.craft.position[0] < 0 or self.craft.position[1] < 0:
 
-            init_craft_planet()
+            self.init_craft_planet()
             self.reset = True
 
-	   self.sim_time += dt
+        self.sim_time += dt
 
     def squared_distance(self, p1, p2):
         return (p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2
@@ -174,13 +174,15 @@ class OrbiterGame(object):
                 to_remove.append(obj)
 
         for obj in to_remove:
-            self.objects.remove(obj)
             self.objects_eaten[obj.obj_type] += 1
             self.object_reward += self.settings["object_reward"][obj.obj_type]
-            self.spawn_object(obj.obj_type)
+            
             if obj.obj_type == "planet":
-                init_craft_planet()
+                self.init_craft_planet()
                 self.reset = True
+            else:
+                self.objects.remove(obj)
+                self.spawn_object(obj.obj_type)
                 
 
     def observe(self):
