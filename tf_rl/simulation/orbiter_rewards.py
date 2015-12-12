@@ -14,9 +14,10 @@ class Orbit(object):
         if self.shape == 'circle':
             return abs(np.sqrt((position - self.center).dot(position - self.center)) - self.radius)
         elif self.shape == 'ellipse':
-            return 0
+            return 0.1
 
     def reward(self, position):
         x = self.distance(position)
         prob = np.exp(-(x**2)/(2 * self.sigma**2))
         return -(prob * self.maximum) + 10
+		

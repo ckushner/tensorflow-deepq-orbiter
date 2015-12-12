@@ -130,12 +130,10 @@ class OrbiterGame(object):
 
         observable_distance = self.settings["observation_line_length"]
 
-        relevant_objects = [obj for obj in self.objects
+        relevant_asteroids = [obj for obj in self.objects
                             if obj.position.distance(self.craft.position) < observable_distance]
-        # objects sorted from closest to furthest
-        relevant_objects.sort(key=lambda x: x.position.distance(self.craft.position))
 
-        observation        = np.zeros(self.observation_size)
+        observation = np.zeros(self.observation_size)
         observation_offset = 0
         for i, observation_line in enumerate(self.observation_lines):
             # shift to craft position
@@ -143,39 +141,14 @@ class OrbiterGame(object):
                                             Vector2(*self.craft.position) + Vector2(*observation_line.p2))
 
             observed_object = None
-            # if end of observation line is outside of walls, we see the wall.
-            if not self.inside_walls(observation_line.p2):
-                observed_object = "**wall**"
-            for obj in relevant_objects:
+            for obj in relevant_asteroids:
                 if observation_line.distance(obj.position) < self.settings["object_radius"]:
                     observed_object = obj
                     break
             object_type_id = None
             speed_x, speed_y = 0, 0
             proximity = 0
-            if observed_object == "**wall**": # wall seen
-                object_type_id = num_obj_types - 1
-                # a wall has fairly low speed...
-                speed_x, speed_y = 0, 0
-                # best candidate is intersection between
-                # observation_line and a wall, that's
-                # closest to the craft
-                best_candidate = None
-                for wall in self.walls:
-                    candidate = observation_line.intersect(wall)
-                    if candidate is not None:
-                        if (best_candidate is None or
-                                best_candidate.distance(self.craft.position) >
-                                candidate.distance(self.craft.position)):
-                            best_candidate = candidate
-                if best_candidate is None:
-                    # assume it is due to rounding errors
-                    # and wall is barely touching observation line
-                    proximity = observable_distance
-                else:
-                    proximity = best_candidate.distance(self.craft.position)
-            elif observed_object is not None: # agent seen
-                object_type_id = self.settings["objects"].index(observed_object.obj_type)
+            if observed_object is not None: # asteroids seen
                 speed_x, speed_y = tuple(observed_object.speed)
                 intersection_segment = obj.as_circle().intersect(observation_line)
                 assert intersection_segment is not None

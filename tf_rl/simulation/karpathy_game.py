@@ -145,10 +145,10 @@ class KarpathyGame(object):
 
         observable_distance = self.settings["observation_line_length"]
 
-        relevant_objects = [obj for obj in self.objects
+        relevant_asteroids = [obj for obj in self.objects
                             if obj.position.distance(self.hero.position) < observable_distance]
         # objects sorted from closest to furthest
-        relevant_objects.sort(key=lambda x: x.position.distance(self.hero.position))
+        relevant_asteroids.sort(key=lambda x: x.position.distance(self.hero.position))
 
         observation        = np.zeros(self.observation_size)
         observation_offset = 0
@@ -161,7 +161,7 @@ class KarpathyGame(object):
             # if end of observation line is outside of walls, we see the wall.
             if not self.inside_walls(observation_line.p2):
                 observed_object = "**wall**"
-            for obj in relevant_objects:
+            for obj in relevant_asteroids:
                 if observation_line.distance(obj.position) < self.settings["object_radius"]:
                     observed_object = obj
                     break
@@ -289,4 +289,3 @@ class KarpathyGame(object):
             offset += 20
 
         return scene
-
