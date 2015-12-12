@@ -256,9 +256,10 @@ class OrbiterGame(object):
         """Generate observation segments in settings["num_observation_lines"] directions"""
         result = []
         start = Point2(0.0, 0.0)
-        end   = Point2(self.settings["observation_line_length"], 0.0)
+        end   = Point2(self.settings["observation_line_length"],
+                        self.settings["observation_line_length"])
         thrustAngle = self.craft.thrust
-        for angle in np.linspace(thrustAngle-np.pi/2, thrustAngle+np.pi/2, self.settings["num_observation_lines"], endpoint=False):
+        for angle in np.linspace(thrustAngle - 3*np.pi/4, thrustAngle + np.pi/4, self.settings["num_observation_lines"], endpoint=False):
             rotation = Point2(math.cos(angle), math.sin(angle))
             current_start = Point2(start[0] * rotation[0], start[1] * rotation[1])
             current_end   = Point2(end[0]   * rotation[0], end[1]   * rotation[1])
