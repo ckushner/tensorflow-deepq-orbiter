@@ -1,3 +1,4 @@
+import itertools
 import math
 import matplotlib.pyplot as plt
 import numpy as np
@@ -42,19 +43,19 @@ class OrbiterGame(object):
 
         self.G = self.settings["G"]
 
-        self.craft = GameObject(Point2(*self.settings["craft_initial_position"]),
-                               np.array(self.settings["craft_initial_speed"]),
-                               np.array(self.settings["craft_radius"]), 
-                               np.array(self.settings["craft_mass"]),
-                               np.array(self.settings["craft_thrust_angle"]),
+        self.craft = GameObject(np.array(self.settings["craft_initial_position"], dtype=float),
+                               np.array(self.settings["craft_initial_speed"], dtype=float),
+                               np.array(self.settings["craft_radius"], dtype=float),
+                               np.array(self.settings["craft_mass"], dtype=float),
+                               np.array(self.settings["craft_thrust_angle"], dtype=float),
                                "craft",
                                self.settings)
 
 
-        self.planet = GameObject(Point2(*self.settings["planet_initial_position"]),
-                               np.array(self.settings["planet_initial_speed"]),
-                               np.array(self.settings["planet_radius"]), 
-                               np.array(self.settings["planet_mass"]),
+        self.planet = GameObject(np.array(self.settings["planet_initial_position"], dtype=float),
+                               np.array(self.settings["planet_initial_speed"], dtype=float),
+                               np.array(self.settings["planet_radius"], dtype=float), 
+                               np.array(self.settings["planet_mass"], dtype=float),
                                0,
                                "planet",
                                self.settings)
@@ -79,7 +80,7 @@ class OrbiterGame(object):
         self.observation_size = self.eye_observation_size * len(self.observation_lines) + 2
 
         rotations = self.settings["craft_rotations"]
-        thrusts = range(self.settings["craft_min_thrust"]
+        thrusts = range(self.settings["craft_min_thrust"],
                         self.settings["craft_max_thrust"],
                         self.settings["craft_step_thrust"])
 
@@ -102,14 +103,14 @@ class OrbiterGame(object):
     def spawn_object(self, obj_type):
         # TODO: avoid placement too close to craft / inside planet
         """Spawn object of a given type and add it to the objects array"""
-        radius = self.settings["object_radius"]
+        radius = self.settings["asteroid_radius"]
         position = np.random.uniform([radius, radius], np.array(self.size) - radius)
         position = Point2(float(position[0]), float(position[1]))
         max_speed = np.array(self.settings["maximum_speed"])
         speed = np.random.uniform(-max_speed, max_speed, 2).astype(float)
 
         self.objects.append(GameObject(position, speed, 
-                            self.asteroid_radius, self.asteroid_mass
+                            self.asteroid_radius, self.asteroid_mass,
                             obj_type, self.settings))
 
     def step(self, dt):
@@ -117,10 +118,10 @@ class OrbiterGame(object):
 
         Also resolve collisions with the craft"""
         for obj in self.objects + [self.craft] :
-            force = (self.G * self.planet.mass * obj.mass) / 
-                (self.planet.position - obj.position)**2
+            force = (self.G * self.planet.mass * obj.mass) \
+                / np.linalg.norm(self.planet.position - obj.position)**2
 
-            obj.speed += (force/obj.mass) * dt
+            obj.speed += dt * force / obj.mass
 
             obj.step(dt)
 
@@ -131,10 +132,9 @@ class OrbiterGame(object):
 
     def resolve_collisions(self):
         """If craft touches, craft eats. Also reward gets updated."""
-        collision_distance = 2 * self.settings["object_radius"]
-        collision_distance2 = collision_distance ** 2
         to_remove = []
         for obj in self.objects:
+            collision_distance2 = (2 * (self.craft.radius + obj.radius)) ** 2
             if self.squared_distance(self.craft.position, obj.position) < collision_distance2:
                 to_remove.append(obj)
         for obj in to_remove:
@@ -148,27 +148,27 @@ class OrbiterGame(object):
         of the closest object to the craft - might be nothing, another object or a wall.
         Representation of observation for all the directions will be concatenated.
         """
+        pos = Point2(*(self.craft.position).tolist())
+
         num_obj_types = len(self.settings["objects"]) + 1 # and wall
         max_speed_x, max_speed_y = self.settings["maximum_speed"]
 
         observable_distance = self.settings["observation_line_length"]
 
         relevant_objects = [obj for obj in self.objects
-                            if obj.position.distance(self.craft.position) < observable_distance]
+                            if obj.position.distance(pos) < observable_distance]
         # objects sorted from closest to furthest
-        relevant_objects.sort(key=lambda x: x.position.distance(self.craft.position))
+        relevant_objects.sort(key=lambda x: x.position.distance(pos))
 
         observation        = np.zeros(self.observation_size)
         observation_offset = 0
         for i, observation_line in enumerate(self.observation_lines):
             # shift to craft position
-            observation_line = LineSegment2(Vector2(*self.craft.position) + Vector2(*observation_line.p1),
-                                            Vector2(*self.craft.position) + Vector2(*observation_line.p2))
+            observation_line = LineSegment2(pos + Vector2(*observation_line.p1),
+                                            pos + Vector2(*observation_line.p2))
 
             observed_object = None
             # if end of observation line is outside of walls, we see the wall.
-            if not self.inside_walls(observation_line.p2):
-                observed_object = "**wall**"
             for obj in relevant_objects:
                 if observation_line.distance(obj.position) < self.settings["object_radius"]:
                     observed_object = obj
@@ -188,23 +188,23 @@ class OrbiterGame(object):
                     candidate = observation_line.intersect(wall)
                     if candidate is not None:
                         if (best_candidate is None or
-                                best_candidate.distance(self.craft.position) >
-                                candidate.distance(self.craft.position)):
+                                best_candidate.distance(pos) >
+                                candidate.distance(pos)):
                             best_candidate = candidate
                 if best_candidate is None:
                     # assume it is due to rounding errors
                     # and wall is barely touching observation line
                     proximity = observable_distance
                 else:
-                    proximity = best_candidate.distance(self.craft.position)
+                    proximity = best_candidate.distance(pos)
             elif observed_object is not None: # agent seen
                 object_type_id = self.settings["objects"].index(observed_object.obj_type)
                 speed_x, speed_y = tuple(observed_object.speed)
                 intersection_segment = obj.as_circle().intersect(observation_line)
                 assert intersection_segment is not None
                 try:
-                    proximity = min(intersection_segment.p1.distance(self.craft.position),
-                                    intersection_segment.p2.distance(self.craft.position))
+                    proximity = min(intersection_segment.p1.distance(pos),
+                                    intersection_segment.p2.distance(pos))
                 except AttributeError:
                     proximity = observable_distance
             for object_type_idx_loop in range(num_obj_types):
@@ -224,7 +224,7 @@ class OrbiterGame(object):
 
     def collect_reward(self):
         """Return accumulated object eating score + current distance to walls score"""
-        total_reward = wall_reward + self.object_reward
+        total_reward = self.object_reward
         self.object_reward = 0
         self.collected_rewards.append(total_reward)
         return total_reward
@@ -261,19 +261,21 @@ class OrbiterGame(object):
     def to_html(self, stats=[]):
         """Return svg representation of the simulator"""
 
-        scale = self.settings["world_size"][0] / self.settings["image_size"]
+        scale = self.settings["image_size"] / self.settings["world_size"][0]
 
         stats = stats[:]
         recent_reward = self.collected_rewards[-100:] + [0]
         objects_eaten_str = ', '.join(["%s: %s" % (o,c) for o,c in self.objects_eaten.items()])
         stats.extend([
-            "nearest wall = %.1f" % (self.distance_to_walls(),),
             "reward       = %.1f" % (sum(recent_reward)/len(recent_reward),),
             "objects eaten => %s" % (objects_eaten_str,),
         ])
 
-        scene = svg.Scene((self.size[0]*scale + 20, self.size[1]*scale + 20 + 20 * len(stats)))
-        scene.add(svg.Rectangle((10, 10), self.size*scale))
+        scene = svg.Scene((self.size[0] * scale + 20,
+                            self.size[1] * scale + 20 + 20 * len(stats)))
+
+        scene.add(svg.Rectangle((10, 10), [x * scale for x in self.size]))
+        scene.add(self.planet.draw(scale))
 
 
         for line in self.observation_lines:
