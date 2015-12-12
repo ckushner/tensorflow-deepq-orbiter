@@ -145,7 +145,7 @@ class OrbiterGame(object):
 
     def observe(self):
         """Return observation vector. For all the observation directions it returns representation
-        of the closest object to the craft - might be nothing, another object or a wall.
+        of the closest object to the hero - might be nothing, another object or a wall.
         Representation of observation for all the directions will be concatenated.
         """
         pos = Point2(*(self.craft.position).tolist())
@@ -155,10 +155,10 @@ class OrbiterGame(object):
 
         observable_distance = self.settings["observation_line_length"]
 
-        relevant_objects = [obj for obj in self.objects
+        relevant_asteroids = [obj for obj in self.objects
                             if obj.position.distance(pos) < observable_distance]
         # objects sorted from closest to furthest
-        relevant_objects.sort(key=lambda x: x.position.distance(pos))
+        relevant_asteroids.sort(key=lambda x: x.position.distance(pos))
 
         observation        = np.zeros(self.observation_size)
         observation_offset = 0
@@ -169,8 +169,8 @@ class OrbiterGame(object):
 
             observed_object = None
             # if end of observation line is outside of walls, we see the wall.
-            for obj in relevant_objects:
-                if observation_line.distance(obj.position) < self.settings["object_radius"]:
+            for obj in relevant_asteroids:
+                if observation_line.distance(obj.position) < obj.radius:
                     observed_object = obj
                     break
             object_type_id = None
@@ -182,7 +182,7 @@ class OrbiterGame(object):
                 speed_x, speed_y = 0, 0
                 # best candidate is intersection between
                 # observation_line and a wall, that's
-                # closest to the craft
+                # closest to the hero
                 best_candidate = None
                 for wall in self.walls:
                     candidate = observation_line.intersect(wall)
