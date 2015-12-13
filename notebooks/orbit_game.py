@@ -102,7 +102,7 @@ optimizer = tf.train.RMSPropOptimizer(learning_rate= 0.0001, decay=0.9)
 
 # DiscreteDeepQ object
 current_controller = DiscreteDeepQ(g.observation_size, g.num_actions, brain, optimizer, session,
-                                   discount_rate=0.9, exploration_period=5000, max_experience=10000, 
+                                   discount_rate=1.00, exploration_period=5000, max_experience=10000, 
                                    store_every_nth=4, train_every_nth=4,
                                    summary_writer=journalist)
 

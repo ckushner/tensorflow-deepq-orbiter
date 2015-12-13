@@ -322,7 +322,7 @@ class OrbiterGame(object):
         "altitude     = %.1f m" % (np.linalg.norm(self.craft.position - self.planet.position) - self.planet.radius),
             "gravity      = %.1f N" % (np.linalg.norm(self.gravity)),
             "speed        = %.1f m/s" % (np.linalg.norm(self.craft.speed)),
-            "heading      = %f degrees" % (self.craft.heading),
+            "heading      = %.1f degrees" % (self.craft.heading),
             "last_reward  = %.3f" % (sum(self.collected_rewards[-1:])),
             "recent_reward = %.3f" % (sum(recent_reward)/len(recent_reward)),
             "total_reward = %.3f" % (sum(reward)/len(reward)),
