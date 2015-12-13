@@ -80,6 +80,12 @@ class OrbiterGame(object):
 
         self.objects_eaten = defaultdict(lambda: 0)
 
+    def linear_reward(self, position):
+        if np.linalg.norm(position - self.planet.position) < self.orbit.radius:
+            return -(np.linalg.norm(self.orbit.radius + self.planet.position - position)/self.orbit.radius)**2
+        else:
+            return -np.linalg.norm(self.orbit.radius + self.planet.position - position)/self.orbit.radius
+
     def init_craft_planet(self):
         self.craft = GameObject(np.array(self.settings["craft_initial_position"], dtype=float),
             np.array(self.settings["craft_initial_speed"], dtype=float),
@@ -108,12 +114,12 @@ class OrbiterGame(object):
 
         self.craft.heading += self.directions[action_id][0]
 
-        thrust_vec = np.array([np.cos(self.craft.heading),
+        thrust_vec = -np.array([np.cos(self.craft.heading),
                                 np.sin(self.craft.heading)])
 
         self.craft.speed += self.directions[action_id][1] * thrust_vec
 
-        self.object_reward += self.directions[action_id][1] * self.fuel_cost
+#        self.object_reward += self.directions[action_id][1] * self.fuel_cost
 
     def spawn_object(self, obj_type):
         # TODO: avoid placement too close to craft / inside planet
@@ -143,7 +149,6 @@ class OrbiterGame(object):
                 self.gravity = force
 
             obj.speed += dt * force / obj.mass
-
             obj.step(dt)
 
         self.resolve_collisions()
@@ -151,13 +156,16 @@ class OrbiterGame(object):
         if self.reset:
             self.object_reward -= 10
             self.reset = False
+            print('Resetting')
         else:
-            self.object_reward += self.orbit.reward(self.craft.position)
+            # self.object_reward += self.orbit.reward(self.craft.position)
+            self.object_reward += self.linear_reward(self.craft.position) 
 
         if self.craft.position[0] > self.size[0] or self.craft.position[1] > self.size[1] or \
             self.craft.position[0] < 0 or self.craft.position[1] < 0:
 
             self.init_craft_planet()
+            print('left universe')
             self.reset = True
 
         self.sim_time += dt
@@ -169,20 +177,22 @@ class OrbiterGame(object):
         """If craft touches, reward gets updated."""
         to_remove = []
         for obj in self.objects + [self.planet] :
-            collision_distance2 = (2 * (self.craft.radius + obj.radius)) ** 2
+            collision_distance2 = (self.craft.radius + obj.radius) ** 2
             if self.squared_distance(self.craft.position, obj.position) < collision_distance2:
                 to_remove.append(obj)
 
         for obj in to_remove:
             self.objects_eaten[obj.obj_type] += 1
-            self.object_reward += self.settings["object_reward"][obj.obj_type]
             
             if obj.obj_type == "planet":
                 self.init_craft_planet()
+                print('planet')
                 self.reset = True
+                self.object_reward += self.linear_reward(self.size[0])
             else:
                 self.objects.remove(obj)
                 self.spawn_object(obj.obj_type)
+                self.object_reward += self.settings["object_reward"][obj.obj_type]
                 
 
     def observe(self):
@@ -212,8 +222,8 @@ class OrbiterGame(object):
         for i, observation_line in enumerate(self.observation_lines):
             # shift to craft position
 
-			start = pos + Vector2(*observation_line.p1)
-			end = pos + Vector2(*observation_line.p2)
+            start = pos + Vector2(*observation_line.p1)
+            end = pos + Vector2(*observation_line.p2)
             observation_line = LineSegment2(start, end)
 
             observed_object = None
@@ -234,15 +244,16 @@ class OrbiterGame(object):
                                     intersection_segment.p2.distance(pos))
                 except AttributeError:
                     proximity = observable_distance
-			else:
-				accuracy = 10.
-				rewards = np.array([])
-				for i in range(1, accuracy+1):
-					coordinates = np.empty(2, dtype=float) 
-					coordinates[0] = i*(end.x - start.x)/accuracy + start.x
-					coordinates[1] = i*(end.y - start.y)/accuracy + start.y
-					rewards.append(self.orbit.reward(coordinates))
-			observation[observation_offset] = np.around(np.average(rewards), decimals=1)
+            else:
+                accuracy = 10.
+                rewards = np.array([])
+                for i in range(1, int(accuracy+1)):
+                    coordinates = np.empty(2, dtype=float) 
+                    coordinates[0] = i*(end.x - start.x)/accuracy + start.x
+                    coordinates[1] = i*(end.y - start.y)/accuracy + start.y
+                    # rewards = np.append(rewards, self.orbit.reward(coordinates))
+                    rewards = np.append(rewards, self.linear_reward(self.craft.position)) 
+            observation[observation_offset] = np.around(np.average(rewards), decimals=1)
 #            for object_type_idx_loop in range(num_obj_types):
 #                observation[observation_offset + object_type_idx_loop] = 1.0
 #            if object_type_id is not None:
@@ -254,10 +265,10 @@ class OrbiterGame(object):
 
         observation[observation_offset]     = self.craft.speed[0] / max_speed_x
         observation[observation_offset + 1] = self.craft.speed[1] / max_speed_y
-		observation[observation_offset + 2] = self.gravity[0]
-		ovservatoin[observation_offset + 3] = sefl.gravity[1]
+        observation[observation_offset + 2] = self.gravity[0]
+        observation[observation_offset + 3] = self.gravity[1]
         assert observation_offset + 4 == self.observation_size
-
+		
         return observation
 
     def collect_reward(self):
@@ -303,15 +314,18 @@ class OrbiterGame(object):
         scale = self.settings["image_size"] / self.settings["world_size"][0]
 
         stats = stats[:]
-        recent_reward = self.collected_rewards[-100:] + [0]
+        reward = self.collected_rewards + [0]
+        recent_reward = reward[-101:]
         objects_eaten_str = ', '.join(["%s: %s" % (o,c) for o,c in self.objects_eaten.items()])
         stats.extend([
             "time         = %.1f s" % (self.sim_time),
-	    "altitude     = %.1f m" % (np.linalg.norm(self.craft.position - self.planet.position) - self.planet.radius),
+        "altitude     = %.1f m" % (np.linalg.norm(self.craft.position - self.planet.position) - self.planet.radius),
             "gravity      = %.1f N" % (np.linalg.norm(self.gravity)),
             "speed        = %.1f m/s" % (np.linalg.norm(self.craft.speed)),
             "heading      = %f degrees" % (self.craft.heading),
-            "reward       = %.1f" % (sum(recent_reward)/len(recent_reward),),
+            "last_reward  = %.3f" % (sum(self.collected_rewards[-1:])),
+            "recent_reward = %.3f" % (sum(recent_reward)/len(recent_reward)),
+            "total_reward = %.3f" % (sum(reward)/len(reward)),
         ])
 
         scene = svg.Scene((self.size[0] * scale + 20,

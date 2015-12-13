@@ -41,27 +41,27 @@ current_settings = {
         'asteroid': -10,
     },
 
-    'world_size': (1e8,1e8), # 10000km^2
+    'world_size': (5e7,5e7), # 10000km^2
     'image_size': 700,
 
     # DRAGON!
-    'craft_initial_position': [5e7,6e7],
-    'craft_initial_speed':    [0,   0],
+    'craft_initial_position': [2.5e7,2.5e7+4.2e5+6e6],
+    'craft_initial_speed':    [-7e3, 0],
     'craft_mass':             6000,
     'craft_radius':           2,
 
-    'craft_rotations':        [-1, 0, 1],
+    'craft_rotations':        [-10, 0, 10],
     'craft_thrust_angle':     180,
     'craft_min_thrust':       0,    
-    'craft_max_thrust':       400, # N
-    'craft_step_thrust':      50,
+    'craft_max_thrust':       301, # N
+    'craft_step_thrust':      100,
 
-    'planet_initial_position': [5e7,5e7],
+    'planet_initial_position': [2.5e7,2.5e7],
     'planet_initial_speed':    [0,   0],
     'planet_mass':   5.9e24,
     'planet_radius': 6e6,
 
-    'orbit_altitude': 400,
+    'orbit_altitude': 4e5,
 
     # need/update?
     "maximum_speed": [1.5e4, 1.5e4],
@@ -72,8 +72,8 @@ current_settings = {
         "asteroid" : 0,
     },
 
-    "num_observation_lines" : 32,
-    "observation_line_length": 120.,
+    "num_observation_lines" : 8,
+    "observation_line_length": 30.,
     "delta_v": 50
 }
 
@@ -116,7 +116,7 @@ fast_mode = False
 if fast_mode:
     FPS, SPEED, RES = 30, 1, 0.1
 else:
-    FPS, SPEED, RES = 30, 1., 60
+    FPS, SPEED, RES = 30, 1., 30 
 
 try:
     with tf.device("/cpu:0"): # can GPU?
