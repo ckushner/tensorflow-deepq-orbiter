@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import random
 import time
+import logging
 
 from collections import defaultdict
 from euclid import Circle, Point2, Vector2, LineSegment2
@@ -40,6 +41,7 @@ class GameObject(object):
 class OrbiterGame(object):
     def __init__(self, settings):
         """Initiallize game simulator with settings"""
+        self.logfile = open('./log.txt', 'w+')
         self.settings = settings
         self.size  = self.settings["world_size"]
         self.sim_time = 0.
@@ -156,16 +158,17 @@ class OrbiterGame(object):
         if self.reset:
             self.object_reward -= 10
             self.reset = False
+            self.logfile.write('1\n')
             print('Resetting')
         else:
             # self.object_reward += self.orbit.reward(self.craft.position)
+            self.logfile.write('0\n')
             self.object_reward += self.linear_reward(self.craft.position) 
 
         if self.craft.position[0] > self.size[0] or self.craft.position[1] > self.size[1] or \
             self.craft.position[0] < 0 or self.craft.position[1] < 0:
 
             self.init_craft_planet()
-            print('left universe')
             self.reset = True
 
         self.sim_time += dt
@@ -186,7 +189,6 @@ class OrbiterGame(object):
             
             if obj.obj_type == "planet":
                 self.init_craft_planet()
-                print('planet')
                 self.reset = True
                 self.object_reward += self.linear_reward(self.size[0])
             else:
@@ -316,10 +318,11 @@ class OrbiterGame(object):
         stats = stats[:]
         reward = self.collected_rewards + [0]
         recent_reward = reward[-101:]
+        altitude = (np.linalg.norm(self.craft.position - self.planet.position) - self.planet.radius)
         objects_eaten_str = ', '.join(["%s: %s" % (o,c) for o,c in self.objects_eaten.items()])
         stats.extend([
             "time         = %.1f s" % (self.sim_time),
-        "altitude     = %.1f m" % (np.linalg.norm(self.craft.position - self.planet.position) - self.planet.radius),
+        "altitude     = %.1f m" % (altitude),
             "gravity      = %.1f N" % (np.linalg.norm(self.gravity)),
             "speed        = %.1f m/s" % (np.linalg.norm(self.craft.speed)),
             "heading      = %.1f degrees" % (self.craft.heading),
@@ -328,6 +331,8 @@ class OrbiterGame(object):
             "total_reward = %.3f" % (sum(reward)/len(reward)),
         ])
 
+        self.logfile.write("%.1f," % (altitude))
+        
         scene = svg.Scene((self.size[0] * scale + 20,
                             self.size[1] * scale + 20 + 20 * len(stats)))
 
