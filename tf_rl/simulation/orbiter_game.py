@@ -212,8 +212,8 @@ class OrbiterGame(object):
         for i, observation_line in enumerate(self.observation_lines):
             # shift to craft position
 
-			start = pos + Vector2(*observation_line.p1)
-			end = pos + Vector2(*observation_line.p2)
+            start = pos + Vector2(*observation_line.p1)
+            end = pos + Vector2(*observation_line.p2)
             observation_line = LineSegment2(start, end)
 
             observed_object = None
@@ -234,15 +234,15 @@ class OrbiterGame(object):
                                     intersection_segment.p2.distance(pos))
                 except AttributeError:
                     proximity = observable_distance
-			else:
-				accuracy = 10.
-				rewards = np.array([])
-				for i in range(1, accuracy+1):
-					coordinates = np.empty(2, dtype=float) 
-					coordinates[0] = i*(end.x - start.x)/accuracy + start.x
-					coordinates[1] = i*(end.y - start.y)/accuracy + start.y
-					rewards.append(self.orbit.reward(coordinates))
-			observation[observation_offset] = np.around(np.average(rewards), decimals=1)
+            else:
+                accuracy = 10.
+                rewards = np.array([])
+                for i in range(1, int(accuracy+1)):
+                    coordinates = np.empty(2, dtype=float) 
+                    coordinates[0] = i*(end.x - start.x)/accuracy + start.x
+                    coordinates[1] = i*(end.y - start.y)/accuracy + start.y
+                    rewards = np.append(rewards, self.orbit.reward(coordinates))
+            observation[observation_offset] = np.around(np.average(rewards), decimals=1)
 #            for object_type_idx_loop in range(num_obj_types):
 #                observation[observation_offset + object_type_idx_loop] = 1.0
 #            if object_type_id is not None:
@@ -254,10 +254,11 @@ class OrbiterGame(object):
 
         observation[observation_offset]     = self.craft.speed[0] / max_speed_x
         observation[observation_offset + 1] = self.craft.speed[1] / max_speed_y
-		observation[observation_offset + 2] = self.gravity[0]
-		ovservatoin[observation_offset + 3] = sefl.gravity[1]
+        observation[observation_offset + 2] = self.gravity[0]
+        observation[observation_offset + 3] = self.gravity[1]
         assert observation_offset + 4 == self.observation_size
-
+		
+        print(observation)
         return observation
 
     def collect_reward(self):
@@ -307,7 +308,7 @@ class OrbiterGame(object):
         objects_eaten_str = ', '.join(["%s: %s" % (o,c) for o,c in self.objects_eaten.items()])
         stats.extend([
             "time         = %.1f s" % (self.sim_time),
-	    "altitude     = %.1f m" % (np.linalg.norm(self.craft.position - self.planet.position) - self.planet.radius),
+        "altitude     = %.1f m" % (np.linalg.norm(self.craft.position - self.planet.position) - self.planet.radius),
             "gravity      = %.1f N" % (np.linalg.norm(self.gravity)),
             "speed        = %.1f m/s" % (np.linalg.norm(self.craft.speed)),
             "heading      = %f degrees" % (self.craft.heading),
