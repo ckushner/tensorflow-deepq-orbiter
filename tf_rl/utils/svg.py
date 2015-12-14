@@ -74,6 +74,9 @@ class Circle:
 
     def strarray(self):
         style_str = compute_style(self.style_kwargs)
+        if 'stroke' in self.style_kwargs.keys():
+            style_str = style_str[:-1]
+            style_str += " stroke:%s\"" % (self.style_kwargs["stroke"])
 
         return [
             "  <circle cx=\"%d\" cy=\"%d\" r=\"%d\"\n" % (self.center[0], self.center[1], self.radius),

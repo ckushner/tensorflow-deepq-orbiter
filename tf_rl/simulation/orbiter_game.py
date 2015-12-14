@@ -36,12 +36,15 @@ class GameObject(object):
     def draw(self, scale):
         """Return svg object for this item."""
         color = self.settings["colors"][self.obj_type]
+        if self.obj_type == "craft":
+            return svg.Circle(self.position*scale + Point2(10, 10), 3, color=color)
         return svg.Circle(self.position*scale + Point2(10, 10), self.radius*scale, color=color)
 
 class OrbiterGame(object):
     def __init__(self, settings):
         """Initiallize game simulator with settings"""
         self.logfile = open('./log.txt', 'w+')
+        self.logfile.write('Altitude,Reward,Orbit Angle,Start\n');
         self.settings = settings
         self.size  = self.settings["world_size"]
         self.sim_time = 0.
@@ -83,10 +86,10 @@ class OrbiterGame(object):
         self.objects_eaten = defaultdict(lambda: 0)
 
     def linear_reward(self, position):
-        if np.linalg.norm(position - self.planet.position) < self.orbit.radius:
-            return -(np.linalg.norm(self.orbit.radius + self.planet.position - position)/self.orbit.radius)**2
-        else:
-            return -np.linalg.norm(self.orbit.radius + self.planet.position - position)/self.orbit.radius
+#        if np.linalg.norm(position - self.planet.position) < self.orbit.radius:
+         return -(np.linalg.norm(self.orbit.radius + self.planet.position - position)/self.orbit.radius)**2
+#        else:
+#            return -np.linalg.norm(self.orbit.radius + self.planet.position - position)/self.orbit.radius
 
     def init_craft_planet(self):
         self.craft = GameObject(np.array(self.settings["craft_initial_position"], dtype=float),
@@ -121,7 +124,8 @@ class OrbiterGame(object):
 
         self.craft.speed += self.directions[action_id][1] * thrust_vec
 
-#        self.object_reward += self.directions[action_id][1] * self.fuel_cost
+        self.object_reward += self.directions[action_id][1] * self.fuel_cost
+        self.object_reward += abs(self.directions[action_id][0])*(-.025)
 
     def spawn_object(self, obj_type):
         # TODO: avoid placement too close to craft / inside planet
@@ -155,19 +159,27 @@ class OrbiterGame(object):
 
         self.resolve_collisions()
 
+        unitThrust = np.array([math.cos(self.craft.heading), math.sin(self.craft.heading)])
+        pToC = self.craft.position - self.planet.position
+        cToO = np.array([-1*pToC[1], pToC[0]])
+        orbitAngle = np.arccos(unitThrust.dot(cToO)/(np.linalg.norm(cToO)*np.linalg.norm(unitThrust)))
+        altitude = (np.linalg.norm(self.craft.position - self.planet.position) - self.planet.radius)
+
+        self.logfile.write("%.1f,%.3f,%.3f," % (altitude, (sum(self.collected_rewards[-1:])), orbitAngle))
+
         if self.reset:
             self.object_reward -= 10
             self.reset = False
             self.logfile.write('1\n')
-            print('Resetting')
+#            print('Resetting')
         else:
             # self.object_reward += self.orbit.reward(self.craft.position)
             self.logfile.write('0\n')
             self.object_reward += self.linear_reward(self.craft.position) 
 
-        if self.craft.position[0] > self.size[0] or self.craft.position[1] > self.size[1] or \
-            self.craft.position[0] < 0 or self.craft.position[1] < 0:
+        boundary = self.planet.radius +self.settings["orbit_altitude"]
 
+        if altitude > boundary:
             self.init_craft_planet()
             self.reset = True
 
@@ -212,50 +224,50 @@ class OrbiterGame(object):
 
         observable_distance = self.settings["observation_line_length"]
 
-        # Filters out asteroids outside of observations lines
-        relevant_asteroids = [obj for obj in self.objects
-                            if obj.position.distance(pos) < observable_distance]
-
-        # objects sorted from closest to furthest
-        relevant_asteroids.sort(key=lambda x: x.position.distance(pos))
-
+#        # Filters out asteroids outside of observations lines
+#        relevant_asteroids = [obj for obj in self.objects
+#                            if obj.position.distance(pos) < observable_distance]
+#
+#        # objects sorted from closest to furthest
+#        relevant_asteroids.sort(key=lambda x: x.position.distance(pos))
+#
         observation        = np.zeros(self.observation_size)
         observation_offset = 0
-        for i, observation_line in enumerate(self.observation_lines):
-            # shift to craft position
-
-            start = pos + Vector2(*observation_line.p1)
-            end = pos + Vector2(*observation_line.p2)
-            observation_line = LineSegment2(start, end)
-
-            observed_object = None
-            for obj in relevant_asteroids:
-                if observation_line.distance(obj.position) < obj.radius:
-                    observed_object = obj
-                    break
-            object_type_id = None
-            speed_x, speed_y = 0, 0
-            proximity = 0
-            if observed_object is not None: # agent seen
-                object_type_id = self.settings["objects"].index(observed_object.obj_type)
-                speed_x, speed_y = tuple(observed_object.speed)
-                intersection_segment = obj.as_circle().intersect(observation_line)
-                assert intersection_segment is not None
-                try:
-                    proximity = min(intersection_segment.p1.distance(pos),
-                                    intersection_segment.p2.distance(pos))
-                except AttributeError:
-                    proximity = observable_distance
-            else:
-                accuracy = 10.
-                rewards = np.array([])
-                for i in range(1, int(accuracy+1)):
-                    coordinates = np.empty(2, dtype=float) 
-                    coordinates[0] = i*(end.x - start.x)/accuracy + start.x
-                    coordinates[1] = i*(end.y - start.y)/accuracy + start.y
-                    # rewards = np.append(rewards, self.orbit.reward(coordinates))
-                    rewards = np.append(rewards, self.linear_reward(self.craft.position)) 
-            observation[observation_offset] = np.around(np.average(rewards), decimals=1)
+#        for i, observation_line in enumerate(self.observation_lines):
+#            # shift to craft position
+#
+#            start = pos + Vector2(*observation_line.p1)
+#            end = pos + Vector2(*observation_line.p2)
+#            observation_line = LineSegment2(start, end)
+#
+#            observed_object = Noneltitude(m)
+#            for obj in relevant_asteroids:
+#                if observation_line.distance(obj.position) < obj.radius:
+#                    observed_object = obj
+#                    break
+#            object_type_id = None
+#            speed_x, speed_y = 0, 0
+#            proximity = 0
+#            if observed_object is not None: # agent seen
+#                object_type_id = self.settings["objects"].index(observed_object.obj_type)
+#                speed_x, speed_y = tuple(observed_object.speed)
+#                intersection_segment = obj.as_circle().intersect(observation_line)
+#                assert intersection_segment is not None
+#                try:
+#                    proximity = min(intersection_segment.p1.distance(pos),
+#                                    intersection_segment.p2.distance(pos))
+#                except AttributeError:
+#                    proximity = observable_distance
+#            else:
+#                accuracy = 10.
+#                rewards = np.array([])
+#                for i in range(1, int(accuracy+1)):
+#                    coordinates = np.empty(2, dtype=float) 
+#                    coordinates[0] = i*(end.x - start.x)/accuracy + start.x
+#                    coordinates[1] = i*(end.y - start.y)/accuracy + start.y
+#                    # rewards = np.append(rewards, self.orbit.reward(coordinates))
+#                    rewards = np.append(rewards, self.linear_reward(self.craft.position)) 
+#            observation[observation_offset] = np.around(np.average(rewards), decimals=1)
 #            for object_type_idx_loop in range(num_obj_types):
 #                observation[observation_offset + object_type_idx_loop] = 1.0
 #            if object_type_id is not None:
@@ -263,13 +275,22 @@ class OrbiterGame(object):
 #            observation[observation_offset + num_obj_types] =     speed_x   / max_speed_x
 #            observation[observation_offset + num_obj_types + 1] = speed_y   / max_speed_y
             #assert num_obj_types + 2 == self.eye_observation_size
-            observation_offset += self.eye_observation_size
+#           observation_offset += self.eye_observation_size
 
-        observation[observation_offset]     = self.craft.speed[0] / max_speed_x
-        observation[observation_offset + 1] = self.craft.speed[1] / max_speed_y
-        observation[observation_offset + 2] = self.gravity[0]
-        observation[observation_offset + 3] = self.gravity[1]
-        assert observation_offset + 4 == self.observation_size
+        unitThrust = np.array([math.cos(self.craft.heading), math.sin(self.craft.heading)])
+        pToC = self.craft.position - self.planet.position
+        cToO = np.array([-1*pToC[1], pToC[0]])
+        orbitAngle = np.arccos(unitThrust.dot(cToO)/(np.linalg.norm(cToO)*np.linalg.norm(unitThrust)))
+
+        observation[observation_offset]     = np.linalg.norm(self.craft.speed.dot(unitThrust)*unitThrust)
+        observation[observation_offset + 1] = np.linalg.norm(self.craft.speed - observation[observation_offset])
+        observation[observation_offset + 2] = (np.linalg.norm(self.craft.position - self.planet.position) - self.planet.radius)
+        observation[observation_offset + 3] = orbitAngle
+    
+ 
+#        observation[observation_offset + 2] = self.gravity[0]
+#        observation[observation_offset + 3] = self.gravity[1]
+#        assert observation_offset + 4 == self.observation_size
 		
         return observation
 
@@ -300,7 +321,7 @@ class OrbiterGame(object):
         end   = Point2(self.settings["observation_line_length"],
                         self.settings["observation_line_length"])
         thrustAngle = np.radians(self.craft.heading)
-        for angle in np.linspace(thrustAngle - np.pi/2, thrustAngle + np.pi/2, self.settings["num_observation_lines"], endpoint=True):
+        for angle in np.linspace(thrustAngle, thrustAngle, self.settings["num_observation_lines"], endpoint=True):
             rotation = Point2(math.cos(angle), -math.sin(angle))
             current_start = Point2(start[0] * rotation[0], start[1] * rotation[1])
             current_end   = Point2(end[0]   * rotation[0], end[1]   * rotation[1])
@@ -314,6 +335,11 @@ class OrbiterGame(object):
         """Return svg representation of the simulator"""
 
         scale = self.settings["image_size"] / self.settings["world_size"][0]
+
+#        unitThrust = np.array([math.cos(self.craft.heading), math.sin(self.craft.heading)])
+#        pToC = self.craft.position - self.planet.position
+#        cToO = np.array([-1*pToC[1], pToC[0]])
+#        orbitAngle = np.arccos(unitThrust.dot(cToO)/(np.linalg.norm(cToO)*np.linalg.norm(unitThrust)))
 
         stats = stats[:]
         reward = self.collected_rewards + [0]
@@ -331,11 +357,17 @@ class OrbiterGame(object):
             "total_reward = %.3f" % (sum(reward)/len(reward)),
         ])
 
-        self.logfile.write("%.1f," % (altitude))
+#        self.logfile.write("%.1f,%.3f,%.3f," % (altitude, (sum(self.collected_rewards[-1:])), orbitAngle))
         
         scene = svg.Scene((self.size[0] * scale + 20,
                             self.size[1] * scale + 20 + 20 * len(stats)))
 
+        scene.add(svg.Circle(self.planet.position*scale+Point2(10,10), \
+            (self.planet.radius+2*self.settings["orbit_altitude"])*scale, \
+            color='white', stroke='red'))
+        scene.add(svg.Circle(self.planet.position*scale+Point2(10,10), \
+            (self.planet.radius+self.settings["orbit_altitude"])*scale, \
+            color='white', stroke='green'))
         scene.add(svg.Rectangle((10, 10), [x * scale for x in self.size]))
         scene.add(self.planet.draw(scale))
 

@@ -32,7 +32,7 @@ current_settings = {
 
     'colors': {
         'craft':    'yellow',
-        'planet':   'green',
+        'planet':   'cornflowerblue',
         'asteroid': 'red',
     },
 
@@ -41,27 +41,27 @@ current_settings = {
         'asteroid': -10,
     },
 
-    'world_size': (5e7,5e7), # 10000km^2
+    'world_size': (2*(6e6+2*6e5),2*(6e6+2*6e5)), # 10000km^2
     'image_size': 700,
 
     # DRAGON!
-    'craft_initial_position': [2.5e7,2.5e7+4.2e5+6e6],
-    'craft_initial_speed':    [-7e3, 0],
+    'craft_initial_position': [6e6+2*6e5, 6e6+2*6e5+6.2e5+6e6],
+    'craft_initial_speed':    [-7.5e3, 0],
     'craft_mass':             6000,
     'craft_radius':           2,
 
     'craft_rotations':        [-10, 0, 10],
-    'craft_thrust_angle':     180,
+    'craft_thrust_angle':     225,
     'craft_min_thrust':       0,    
-    'craft_max_thrust':       301, # N
-    'craft_step_thrust':      100,
+    'craft_max_thrust':       101, # N
+    'craft_step_thrust':      50,
 
-    'planet_initial_position': [2.5e7,2.5e7],
+    'planet_initial_position': [6e6+2*6e5,6e6+2*6e5],
     'planet_initial_speed':    [0,   0],
     'planet_mass':   5.9e24,
     'planet_radius': 6e6,
 
-    'orbit_altitude': 4e5,
+    'orbit_altitude': 6e5,
 
     # need/update?
     "maximum_speed": [1.5e4, 1.5e4],
@@ -73,7 +73,7 @@ current_settings = {
     },
 
     "num_observation_lines" : 8,
-    "observation_line_length": 30.,
+    "observation_line_length": 10.,
     "delta_v": 50
 }
 

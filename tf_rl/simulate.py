@@ -68,7 +68,7 @@ def simulate(simulation,
                 svg_html.write_svg(f)
             vis_s['last_image'] += 1
 
-    eq.schedule_recurring(visualize, time_between_frames)
+#    eq.schedule_recurring(visualize, time_between_frames)
 
 
     ###### CONTROL
