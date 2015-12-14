@@ -12,3 +12,4 @@ Run 5 - Velocity with respect to thrust, full fuel penalty, reward squared withi
 Run 6 - Change reward to squared on both sides of orbit, make outer boundary circular
         and a radius of twice orbital, shrink world, change desired orbit to 6e5,
         changed initial velocity to -6.6e6, changed world to cornflowerblue
+Run 7 - Velocity is now polar, fixed the whole boundary thing. Removed fuel penalty

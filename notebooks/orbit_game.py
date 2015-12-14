@@ -52,9 +52,9 @@ current_settings = {
 
     'craft_rotations':        [-10, 0, 10],
     'craft_thrust_angle':     225,
-    'craft_min_thrust':       0,    
+    'craft_min_thrust':       -100,    
     'craft_max_thrust':       101, # N
-    'craft_step_thrust':      50,
+    'craft_step_thrust':      100,
 
     'planet_initial_position': [6e6+2*6e5,6e6+2*6e5],
     'planet_initial_speed':    [0,   0],
@@ -72,7 +72,7 @@ current_settings = {
         "asteroid" : 0,
     },
 
-    "num_observation_lines" : 8,
+    "num_observation_lines" : 0,
     "observation_line_length": 10.,
     "delta_v": 50
 }

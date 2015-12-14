@@ -43,7 +43,7 @@ class GameObject(object):
 class OrbiterGame(object):
     def __init__(self, settings):
         """Initiallize game simulator with settings"""
-        self.logfile = open('./log.txt', 'w+')
+        self.logfile = open('./log7.txt', 'w+')
         self.logfile.write('Altitude,Reward,Orbit Angle,Start\n');
         self.settings = settings
         self.size  = self.settings["world_size"]
@@ -80,14 +80,16 @@ class OrbiterGame(object):
                         self.settings["craft_max_thrust"],
                         self.settings["craft_step_thrust"])
 
-        self.directions = list(itertools.product(rotations, thrusts))
+#        self.directions = list(itertools.product(rotations, thrusts))
+        self.directions = list(itertools.product(thrusts, thrusts))
         self.num_actions = len(self.directions)
 
         self.objects_eaten = defaultdict(lambda: 0)
 
     def linear_reward(self, position):
-#        if np.linalg.norm(position - self.planet.position) < self.orbit.radius:
-         return -(np.linalg.norm(self.orbit.radius + self.planet.position - position)/self.orbit.radius)**2
+        return 1-((self.orbit.radius - np.linalg.norm(position - self.planet.position)))**2
+#        if np.linalg.normself.orbit.radius - (position - self.planet.position) < self.orbit.radius:
+#         return -(np.linalg.norm(self.orbit.radius + self.planet.position - position)/self.orbit.radius)**2
 #        else:
 #            return -np.linalg.norm(self.orbit.radius + self.planet.position - position)/self.orbit.radius
 
@@ -117,15 +119,25 @@ class OrbiterGame(object):
         """Change speed to one of craft vectors"""
         assert 0 <= action_id < self.num_actions
 
-        self.craft.heading += self.directions[action_id][0]
+        unitThrust = np.array([math.cos(self.craft.heading), math.sin(self.craft.heading)])
+        pToC = self.craft.position - self.planet.position
+        cToO = np.array([-1*pToC[1], pToC[0]])
+        unitCToO = cToO/np.linalg.norm(cToO)
+        orbitAngle = np.arccos(unitThrust.dot(cToO)/(np.linalg.norm(cToO)*np.linalg.norm(unitThrust)))
 
-        thrust_vec = -np.array([np.cos(self.craft.heading),
-                                np.sin(self.craft.heading)])
+#        self.craft.heading += self.directions[action_id][0]
 
-        self.craft.speed += self.directions[action_id][1] * thrust_vec
+#        thrust_vec = -np.array([np.cos(self.craft.heading),
+#                                np.sin(self.craft.heading)])
 
-        self.object_reward += self.directions[action_id][1] * self.fuel_cost
-        self.object_reward += abs(self.directions[action_id][0])*(-.025)
+#        self.craft.speed += self.directions[action_id][1] * thrust_vec
+#        self.craft.speed += np.array([self.directions[action_id][0], self.directions[action_id][1]])
+        self.craft.speed += np.array([self.directions[action_id][0]*np.cos(self.directions[action_id][1]), \
+                            self.directions[action_id][0]*np.sin(self.directions[action_id][1])])
+
+#        self.object_reward += abs(self.directions[action_id][0])*(-.025)
+#        self.object_reward += abs(self.directions[action_id][1]) * self.fuel_cost
+#        self.object_reward += abs(self.directions[action_id][0]) * self.fuel_cost
 
     def spawn_object(self, obj_type):
         # TODO: avoid placement too close to craft / inside planet
@@ -168,16 +180,16 @@ class OrbiterGame(object):
         self.logfile.write("%.1f,%.3f,%.3f," % (altitude, (sum(self.collected_rewards[-1:])), orbitAngle))
 
         if self.reset:
-            self.object_reward -= 10
+            self.object_reward -= self.linear_reward(np.array([0, self.planet.position[1]]))
             self.reset = False
             self.logfile.write('1\n')
-#            print('Resetting')
+            print('Resetting')
         else:
             # self.object_reward += self.orbit.reward(self.craft.position)
             self.logfile.write('0\n')
             self.object_reward += self.linear_reward(self.craft.position) 
 
-        boundary = self.planet.radius +self.settings["orbit_altitude"]
+        boundary = 2*self.settings["orbit_altitude"]
 
         if altitude > boundary:
             self.init_craft_planet()
@@ -202,7 +214,7 @@ class OrbiterGame(object):
             if obj.obj_type == "planet":
                 self.init_craft_planet()
                 self.reset = True
-                self.object_reward += self.linear_reward(self.size[0])
+#                self.object_reward += self.linear_reward(self.size[0])
             else:
                 self.objects.remove(obj)
                 self.spawn_object(obj.obj_type)
@@ -280,12 +292,13 @@ class OrbiterGame(object):
         unitThrust = np.array([math.cos(self.craft.heading), math.sin(self.craft.heading)])
         pToC = self.craft.position - self.planet.position
         cToO = np.array([-1*pToC[1], pToC[0]])
+        unitCToO = cToO/np.linalg.norm(cToO)
         orbitAngle = np.arccos(unitThrust.dot(cToO)/(np.linalg.norm(cToO)*np.linalg.norm(unitThrust)))
 
-        observation[observation_offset]     = np.linalg.norm(self.craft.speed.dot(unitThrust)*unitThrust)
-        observation[observation_offset + 1] = np.linalg.norm(self.craft.speed - observation[observation_offset])
-        observation[observation_offset + 2] = (np.linalg.norm(self.craft.position - self.planet.position) - self.planet.radius)
-        observation[observation_offset + 3] = orbitAngle
+        observation[observation_offset]     = np.linalg.norm(self.craft.speed.dot(unitCToO)*unitCToO)
+        observation[observation_offset + 1] = np.linalg.norm(self.craft.speed- observation[observation_offset])
+        observation[observation_offset + 2] = self.orbit.radius-(np.linalg.norm(self.craft.position - self.planet.position))
+#        observation[observation_offset + 3] = orbitAngle
     
  
 #        observation[observation_offset + 2] = self.gravity[0]

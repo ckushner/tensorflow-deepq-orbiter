@@ -6,3 +6,4 @@ notebooks/Goofiness.ipynb
 *.svg
 *log.txt
 notebooks/log*.txt
+notebooks/longestLife.m~

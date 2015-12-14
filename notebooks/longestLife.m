@@ -1,7 +1,7 @@
 % Find length of lives
 clc; clear all; close all;
 orbitAlt = 6e5;
-y = csvread('log6.txt', 1);
+y = csvread('log7.txt', 1);
 Rewards = y(:,2);
 Angles = y(:,3);
 
@@ -51,14 +51,14 @@ for i = x
 end
 
 figure; plot(1:length(liveLen), liveLen);
-title('Live Length Per Epoch'); xlabel('Epoch'); ylabel('Live Length');
+title('Life Length Per Epoch'); xlabel('Epoch'); ylabel('Live Length');
 figure; plot(1:bestCount+1, y(bestLife:bestLife+bestCount, 1), 1:bestCount+1, orbitAlt*ones(size(1:bestCount+1)));
 title('Longest Life Altitude'); xlabel('Step'); ylabel('Altitude(m)'); legend('Craft', 'Target Orbit');
 figure; plot(x, y(:,1));
 title('Altitude'); xlabel('Step'); ylabel('Altitude(m)');
-figure; plot(1:length(liveLen), aveAltperEpoch);
+figure; plot(1:length(liveLen)+1, aveAltperEpoch);
 title('Average Altitute Per Epoch'); xlabel('Epoch'); ylabel('Altitute(m)');
-figure; plot(1:length(liveLen), aveRewardperEpoch);
-title('Average Reward Per Epoch'); xlabel('Step'); ylabel('Reward');
-figure; plot(1:length(liveLen), aveAngleperEpoch);
+figure; plot(1:length(liveLen)+1, aveRewardperEpoch);
+title('Average Reward Per Epoch'); xlabel('Epoch'); ylabel('Reward');
+figure; plot(1:length(liveLen)+1, aveAngleperEpoch);
 title('Average Angle From Desired Orbit Per Epoch'); xlabel('Step'); ylabel('Angle in Radians');
