@@ -5,3 +5,4 @@ __pycache__/
 notebooks/Goofiness.ipynb
 *.svg
 *log.txt
+notebooks/log*.txt
