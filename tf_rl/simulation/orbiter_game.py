@@ -132,8 +132,22 @@ class OrbiterGame(object):
 
 #        self.craft.speed += self.directions[action_id][1] * thrust_vec
 #        self.craft.speed += np.array([self.directions[action_id][0], self.directions[action_id][1]])
-        self.craft.speed += np.array([self.directions[action_id][0]*np.cos(self.directions[action_id][1]), \
-                            self.directions[action_id][0]*np.sin(self.directions[action_id][1])])
+        radial = self.craft.position - self.planet.position
+        radial_velocity = self.directions[action_id][1]*(radial/np.linalg.norm(radial))
+        tangential = np.array([-1*radial[1], radial[0]])
+        tangential_velocity = self.directions[action_id][0]*(tangential/np.linang.norm(tangential))
+
+        tangential_xangle = np.arccos(np.array([1, 0]).dot(tangential)/np.linalg.norm(tangential))
+        radial_xangle = np.arccos(np.array([1, 0]).dot(radial)/np.linalg.norm(radial))
+        tangential_yangle = np.arccos(np.array([0, 1]).dot(tangential)/np.linalg.norm(tangential))
+        radial_yangle = np.arccos(np.array([0, 1]).dot(radial)/np.linalg.norm(radial))
+
+        x_velocity = self.directions[action_id][0]*cos(tangential_xangle) \
+                    + self.direction[action_id][1]*cos(radial_xangle)
+        y_velocity = self.directions[action_id][0]*sin(tangential_yangle) \
+                    + self.direction[action_id][1]*sin(radial_yangle)
+
+        self.craft.speed += np.array([x_velocity, y_velocity])
 
 #        self.object_reward += abs(self.directions[action_id][0])*(-.025)
 #        self.object_reward += abs(self.directions[action_id][1]) * self.fuel_cost
