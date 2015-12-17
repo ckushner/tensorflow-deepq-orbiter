@@ -134,7 +134,7 @@ class OrbiterGame(object):
 #        self.craft.speed += np.array([self.directions[action_id][0], self.directions[action_id][1]])
         radial = self.craft.position - self.planet.position
         radial_velocity = self.directions[action_id][1]*(radial/np.linalg.norm(radial))
-        tangential = np.array([-1*radial[1], radial[0]])
+        tangential = np.array([radial[1], -1*radial[0]])
         tangential_velocity = self.directions[action_id][0]*(tangential/np.linalg.norm(tangential))
 
         tangential_xangle = np.arccos(np.array([1, 0]).dot(tangential)/np.linalg.norm(tangential))
