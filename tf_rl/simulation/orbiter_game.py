@@ -149,6 +149,14 @@ class OrbiterGame(object):
 
         self.craft.speed += np.array([x_velocity, y_velocity])
 
+        mu = self.G*self.planet.mass
+        velocity = np.array([x_velocity, y_velocity])
+        h = self.craft.position.cross(velocity)
+        e = velocity.cross(h)/mu
+        a = np.linalg.norm(h)**2/(mu*(1-np.linalg.norm(e)**2))
+        apoapsis = a*(1+np.linalg.norm(e))
+        periapsis = a*(1-np.linalg.norm(e))
+
 #        self.object_reward += abs(self.directions[action_id][0])*(-.025)
 #        self.object_reward += abs(self.directions[action_id][1]) * self.fuel_cost
 #        self.object_reward += abs(self.directions[action_id][0]) * self.fuel_cost
