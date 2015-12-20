@@ -134,18 +134,11 @@ class OrbiterGame(object):
 #        self.craft.speed += np.array([self.directions[action_id][0], self.directions[action_id][1]])
         radial = self.craft.position - self.planet.position
         radial_velocity = self.directions[action_id][1]*(radial/np.linalg.norm(radial))
-        tangential = np.array([radial[1], -1*radial[0]])
+        tangential = np.array([-1 * radial[1], radial[0]])
         tangential_velocity = self.directions[action_id][0]*(tangential/np.linalg.norm(tangential))
 
-        tangential_xangle = np.arccos(np.array([1, 0]).dot(tangential)/np.linalg.norm(tangential))
-        radial_xangle = np.arccos(np.array([1, 0]).dot(radial)/np.linalg.norm(radial))
-        tangential_yangle = np.arccos(np.array([0, 1]).dot(tangential)/np.linalg.norm(tangential))
-        radial_yangle = np.arccos(np.array([0, 1]).dot(radial)/np.linalg.norm(radial))
-
-        x_velocity = self.directions[action_id][0]*np.cos(tangential_xangle) \
-                    + self.directions[action_id][1]*np.cos(radial_xangle)
-        y_velocity = self.directions[action_id][0]*np.sin(tangential_yangle) \
-                    + self.directions[action_id][1]*np.sin(radial_yangle)
+        x_velocity = tangential_velocity[0] + radial_velocity[0]
+        y_velocity = tangential_velocity[1] + radial_velocity[1]
 
         self.craft.speed += np.array([x_velocity, y_velocity])
 
@@ -197,7 +190,7 @@ class OrbiterGame(object):
             self.object_reward -= self.linear_reward(np.array([0, self.planet.position[1]]))
             self.reset = False
             self.logfile.write('1\n')
-            print('Resetting')
+            #print('Resetting')
         else:
             # self.object_reward += self.orbit.reward(self.craft.position)
             self.logfile.write('0\n')
@@ -303,15 +296,32 @@ class OrbiterGame(object):
             #assert num_obj_types + 2 == self.eye_observation_size
 #           observation_offset += self.eye_observation_size
 
-        unitThrust = np.array([math.cos(self.craft.heading), math.sin(self.craft.heading)])
-        pToC = self.craft.position - self.planet.position
-        cToO = np.array([-1*pToC[1], pToC[0]])
-        unitCToO = cToO/np.linalg.norm(cToO)
-        orbitAngle = np.arccos(unitThrust.dot(cToO)/(np.linalg.norm(cToO)*np.linalg.norm(unitThrust)))
+        #unitThrust = np.array([math.cos(self.craft.heading), math.sin(self.craft.heading)])
+        #unitCToO = cToO/np.linalg.norm(cToO)
+        #orbitAngle = np.arccos(unitThrust.dot(cToO)/(np.linalg.norm(cToO)*np.linalg.norm(unitThrust)))
 
-        observation[observation_offset]     = np.linalg.norm(self.craft.speed.dot(unitCToO)*unitCToO)
-        observation[observation_offset + 1] = np.linalg.norm(self.craft.speed- observation[observation_offset])
-        observation[observation_offset + 2] = self.orbit.radius-(np.linalg.norm(self.craft.position - self.planet.position))
+        radius = self.craft.position - self.planet.position
+        radius = radius / np.linalg.norm(radius)
+        tangent = np.array([-radius[1], radius[0]])
+
+        # change-of-basis matrix from B = {radius, tangent} to standard basis
+        p = np.matrix([ [radius[0], tangent[0]], \
+                        [radius[1], tangent[1]] ])
+
+        # velocity in terms of new basis B
+        new_v = self.craft.speed * np.transpose(np.linalg.inv(p))
+        new_v = np.squeeze(np.asarray(new_v))
+ 
+        #radial_v = (radius.dot(self.craft.speed) / (np.linalg.norm(radius)**2)) * radius
+        #tangential_v = (tangent.dot(self.craft.speed) / (np.linalg.norm(tangent)**2)) * tangent
+
+        observation[observation_offset] = new_v[0]
+        observation[observation_offset + 1] = new_v[1]
+        observation[observation_offset + 2] = self.orbit.radius - (np.linalg.norm(self.craft.position - self.planet.position))
+
+        #observation[observation_offset]     = np.linalg.norm(self.craft.speed.dot(unitCToO)*unitCToO)
+        #observation[observation_offset + 1] = np.linalg.norm(self.craft.speed- observation[observation_offset])
+        #observation[observation_offset + 2] = self.orbit.radius-(np.linalg.norm(self.craft.position - self.planet.position))
 #        observation[observation_offset + 3] = orbitAngle
     
  
@@ -375,10 +385,8 @@ class OrbiterGame(object):
         objects_eaten_str = ', '.join(["%s: %s" % (o,c) for o,c in self.objects_eaten.items()])
         stats.extend([
             "time         = %.1f s" % (self.sim_time),
-        "altitude     = %.1f m" % (altitude),
-            "gravity      = %.1f N" % (np.linalg.norm(self.gravity)),
+            "altitude     = %.1f m" % (altitude),
             "speed        = %.1f m/s" % (np.linalg.norm(self.craft.speed)),
-            "heading      = %.1f degrees" % (self.craft.heading),
             "last_reward  = %.3f" % (sum(self.collected_rewards[-1:])),
             "recent_reward = %.3f" % (sum(recent_reward)/len(recent_reward)),
             "total_reward = %.3f" % (sum(reward)/len(reward)),
@@ -397,7 +405,6 @@ class OrbiterGame(object):
             color='white', stroke='green'))
         scene.add(svg.Rectangle((10, 10), [x * scale for x in self.size]))
         scene.add(self.planet.draw(scale))
-
 
         for line in self.observation_lines:
             scene.add(svg.Line(line.p1 + Point2(*(self.craft.position).tolist()) * scale + Point2(10,10),
