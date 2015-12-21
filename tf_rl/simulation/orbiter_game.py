@@ -121,7 +121,7 @@ class OrbiterGame(object):
 
         unitThrust = np.array([math.cos(self.craft.heading), math.sin(self.craft.heading)])
         pToC = self.craft.position - self.planet.position
-        cToO = np.array([-1*pToC[1], pToC[0]])
+        cToO = np.array([pToC[1], -1*pToC[0]])
         unitCToO = cToO/np.linalg.norm(cToO)
         orbitAngle = np.arccos(unitThrust.dot(cToO)/(np.linalg.norm(cToO)*np.linalg.norm(unitThrust)))
 
@@ -141,6 +141,14 @@ class OrbiterGame(object):
         y_velocity = tangential_velocity[1] + radial_velocity[1]
 
         self.craft.speed += np.array([x_velocity, y_velocity])
+
+        mu = self.G*self.planet.mass
+        velocity = np.array([x_velocity, y_velocity])
+        h = self.craft.position.cross(velocity)
+        e = velocity.cross(h)/mu
+        a = np.linalg.norm(h)**2/(mu*(1-np.linalg.norm(e)**2))
+        apoapsis = a*(1+np.linalg.norm(e))
+        periapsis = a*(1-np.linalg.norm(e))
 
 #        self.object_reward += abs(self.directions[action_id][0])*(-.025)
 #        self.object_reward += abs(self.directions[action_id][1]) * self.fuel_cost
@@ -180,7 +188,7 @@ class OrbiterGame(object):
 
         unitThrust = np.array([math.cos(self.craft.heading), math.sin(self.craft.heading)])
         pToC = self.craft.position - self.planet.position
-        cToO = np.array([-1*pToC[1], pToC[0]])
+        cToO = np.array([pToC[1], -1*pToC[0]])
         orbitAngle = np.arccos(unitThrust.dot(cToO)/(np.linalg.norm(cToO)*np.linalg.norm(unitThrust)))
         altitude = (np.linalg.norm(self.craft.position - self.planet.position) - self.planet.radius)
 
@@ -300,6 +308,12 @@ class OrbiterGame(object):
         #unitCToO = cToO/np.linalg.norm(cToO)
         #orbitAngle = np.arccos(unitThrust.dot(cToO)/(np.linalg.norm(cToO)*np.linalg.norm(unitThrust)))
 
+        unitThrust = np.array([math.cos(self.craft.heading), math.sin(self.craft.heading)])
+        pToC = self.craft.position - self.planet.position
+        cToO = np.array([pToC[1], -1*pToC[0]])
+        unitCToO = cToO/np.linalg.norm(cToO)
+        orbitAngle = np.arccos(unitThrust.dot(cToO)/(np.linalg.norm(cToO)*np.linalg.norm(unitThrust)))
+
         radius = self.craft.position - self.planet.position
         radius = radius / np.linalg.norm(radius)
         tangent = np.array([-radius[1], radius[0]])
@@ -375,7 +389,7 @@ class OrbiterGame(object):
 
 #        unitThrust = np.array([math.cos(self.craft.heading), math.sin(self.craft.heading)])
 #        pToC = self.craft.position - self.planet.position
-#        cToO = np.array([-1*pToC[1], pToC[0]])
+#        cToO = np.array([pToC[1], -1*pToC[0]])
 #        orbitAngle = np.arccos(unitThrust.dot(cToO)/(np.linalg.norm(cToO)*np.linalg.norm(unitThrust)))
 
         stats = stats[:]
