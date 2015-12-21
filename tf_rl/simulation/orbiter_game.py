@@ -73,7 +73,7 @@ class OrbiterGame(object):
         # two numbers representing speed of the object (if applicable)
         self.eye_observation_size = 1 #len(self.settings["objects"]) + 2 # 2 not 3 because we have no walls
         # additionally there are two numbers representing agents own speed.
-        self.observation_size = self.eye_observation_size * len(self.observation_lines) + 4
+        self.observation_size = 4 #self.eye_observation_size * len(self.observation_lines) + 4
 
         rotations = self.settings["craft_rotations"]
         thrusts = range(self.settings["craft_min_thrust"],
@@ -142,14 +142,6 @@ class OrbiterGame(object):
 
         self.craft.speed += np.array([x_velocity, y_velocity])
 
-        mu = self.G*self.planet.mass
-        velocity = np.array([x_velocity, y_velocity])
-        h = self.craft.position.cross(velocity)
-        e = velocity.cross(h)/mu
-        a = np.linalg.norm(h)**2/(mu*(1-np.linalg.norm(e)**2))
-        apoapsis = a*(1+np.linalg.norm(e))
-        periapsis = a*(1-np.linalg.norm(e))
-
 #        self.object_reward += abs(self.directions[action_id][0])*(-.025)
 #        self.object_reward += abs(self.directions[action_id][1]) * self.fuel_cost
 #        self.object_reward += abs(self.directions[action_id][0]) * self.fuel_cost
@@ -198,7 +190,7 @@ class OrbiterGame(object):
             self.object_reward -= self.linear_reward(np.array([0, self.planet.position[1]]))
             self.reset = False
             self.logfile.write('1\n')
-            #print('Resetting')
+            print('Resetting')
         else:
             # self.object_reward += self.orbit.reward(self.craft.position)
             self.logfile.write('0\n')
